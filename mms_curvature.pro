@@ -60,12 +60,6 @@ for i=0,n_elements(bt4.x)-1 do begin			; Step through all time steps in B data
 	endfor
 endfor
 
-; Interpolate position data to increase cadance to that of the FGM data.  Linear interpolation used.
-r1 = {x:b1.x, y:[[interpol(rr1.y[*,0], rr1.x, b1.x)], [interpol(rr1.y[*,1], rr1.x, b1.x)], [interpol(rr1.y[*,2], rr1.x, b1.x)]]}
-r2 = {x:b2.x, y:[[interpol(rr2.y[*,0], rr2.x, b2.x)], [interpol(rr1.y[*,1], rr2.x, b2.x)], [interpol(rr2.y[*,2], rr2.x, b2.x)]]}
-r3 = {x:b3.x, y:[[interpol(rr3.y[*,0], rr3.x, b3.x)], [interpol(rr1.y[*,1], rr3.x, b3.x)], [interpol(rr3.y[*,2], rr3.x, b3.x)]]}
-r4 = {x:b4.x, y:[[interpol(rr4.y[*,0], rr4.x, b4.x)], [interpol(rr1.y[*,1], rr4.x, b4.x)], [interpol(rr4.y[*,2], rr4.x, b4.x)]]}
-
 ; Find master time series from magnetic field data
 
 ;	; Find last beginning time --> master start time
@@ -74,7 +68,44 @@ r4 = {x:b4.x, y:[[interpol(rr4.y[*,0], rr4.x, b4.x)], [interpol(rr1.y[*,1], rr4.
 ;	; truncate and interpolate data from all other s/c to match master time base
 ;	; interpolate positional data from all s/c to master time base
 
-t_master = b1.x	; temp until interpolation fleshed out
+t_start = max([b1.x[0], b2.x[0], b3.x[0], b4.x[0]], master_sc)	; find latest start time and which probe has it
+t_end = min([b1.x[-1], b2.x[-1], b3.x[-1], b4.x[-1]])		; find first end time
+t_end_index = 0
+
+case master_sc of		; Use the time coords of the last start probe and then truncate at the first end time
+	0: begin
+		while b1.x[t_end_index] le t_end do t_end_index += 1
+		t_master = b1.x[0:t_end_index]
+	end
+	1: begin
+		while b2.x[t_end_index] le t_end do t_end_index += 1
+		t_master = b2.x[0:t_end_index]
+	end
+	2: begin
+		while b3.x[t_end_index] le t_end do t_end_index += 1
+		t_master = b3.x[0:t_end_index]
+	end
+	3: begin
+		while b4.x[t_end_index] le t_end do t_end_index += 1
+		t_master = b4.x[0:t_end_index]
+	end
+endcase
+
+; interpolated b timeseries, linear interpolation used
+bi1 = {x:t_master, y:[[interpol(b1.y[*,0], b1.x, t_master)], [interpol(b1.y[*,1], b1.x, t_master)], [interpol(b1.y[*,2], b1.x, t_master)]]}
+bi2 = {x:t_master, y:[[interpol(b2.y[*,0], b2.x, t_master)], [interpol(b2.y[*,1], b2.x, t_master)], [interpol(b2.y[*,2], b2.x, t_master)]]}
+bi3 = {x:t_master, y:[[interpol(b3.y[*,0], b3.x, t_master)], [interpol(b3.y[*,1], b3.x, t_master)], [interpol(b3.y[*,2], b3.x, t_master)]]}
+bi4 = {x:t_master, y:[[interpol(b4.y[*,0], b4.x, t_master)], [interpol(b4.y[*,1], b4.x, t_master)], [interpol(b4.y[*,2], b4.x, t_master)]]}
+
+; Interpolate position data to increase cadance to that of the FGM data.  Linear interpolation used.
+r1 = {x:t_master, y:[[interpol(rr1.y[*,0], rr1.x, t_master)], [interpol(rr1.y[*,1], rr1.x, t_master)], [interpol(rr1.y[*,2], rr1.x, t_master)]]}
+r2 = {x:t_master, y:[[interpol(rr2.y[*,0], rr2.x, t_master)], [interpol(rr1.y[*,1], rr2.x, t_master)], [interpol(rr2.y[*,2], rr2.x, t_master)]]}
+r3 = {x:t_master, y:[[interpol(rr3.y[*,0], rr3.x, t_master)], [interpol(rr1.y[*,1], rr3.x, t_master)], [interpol(rr3.y[*,2], rr3.x, t_master)]]}
+r4 = {x:t_master, y:[[interpol(rr4.y[*,0], rr4.x, t_master)], [interpol(rr1.y[*,1], rr4.x, t_master)], [interpol(rr4.y[*,2], rr4.x, t_master)]]}
+
+; Now all of the magnetic field and positional data are of the same cadance and at the same times for each time index
+
+;t_master = b1.x	; temp until interpolation fleshed out
 
 ; Calculate position and normalized magnetic field at mesocenter of fleet
 rm = {x:t_master, y:fltarr(n_elements(t_master), 3, /nozero)}
@@ -87,7 +118,7 @@ endfor
 bm = {x:t_master, y:fltarr(n_elements(t_master), 3, /nozero)}
 for i=0,n_elements(t_master)-1 do begin
 	for j=0,2 do begin
-		bm.y[i,j] = (1/4)*total([b1.y[i,j], b2.y[i,j], b3.y[i,j], b4.y[i,j]] )
+		bm.y[i,j] = (1/4)*total([bi1.y[i,j], bi2.y[i,j], bi3.y[i,j], bi4.y[i,j]] )
 	endfor
 endfor
 
@@ -109,10 +140,16 @@ for i=0,n_elements(t_master)-1 do Rinv.y[i,*,*] = la_invert(reform(Rvol.y[i,*,*]
 grad_Harvey = {x:t_master, y:dblarr(n_elements(t_master), 3, 3, /nozero)
 grad_Shen = {x:t_master, y:dblarr(n_elements(t_master), 3, 3, /nozero)
 
-for i=0,n_elements(t_master)-1 do begin
+; need to solve the implicit summation over k as well as every bloody other thing.  Might be able to do this operation vectorized over all of the time axis, but might not be able to.  In any case, this needs to get ironed out for both the Harvey and Shen methods for grad(b)
+
+
+
+
+
+for i=0,2 do begin
 	for j=0,2 do begin
 		for k = 0,2 do begin
-			grad_Harvey.y[i,j,k] = 
+			grad_Harvey.y[*,i,j] = (bi1.y[*,i] - bi2.y[*,i])*(r1.y[*,k]
 			grad_Shen.y[i,j,k] = 
 		endfor
 	endfor
