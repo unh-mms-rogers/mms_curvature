@@ -137,8 +137,22 @@ for i=0,n_elements(t_master)-1 do Rinv.y[i,*,*] = la_invert(reform(Rvol.y[i,*,*]
 
 
 ; Calculate grad(b) using both Harvey and Shen methods
+
 grad_Harvey = {x:t_master, y:dblarr(n_elements(t_master), 3, 3, /nozero)
 grad_Shen = {x:t_master, y:dblarr(n_elements(t_master), 3, 3, /nozero)
+
+for t = 0,n_elements(t_master) do begin
+	for i =0,2 do begin
+		for j = 0,2 do begin
+			dbdr = dblarr(3)
+			for k = 0,2 do begin
+				for a = 0,2 do begin
+					foreach b, list[a] do begin
+						dbdr[k] = dbdr[k] + (...
+
+						; Balls.  I need to expand out the whole of the 6 permutations.  This will wait until tomorrow.
+
+						; Need to endfor all of these.
 
 ; need to solve the implicit summation over k as well as every bloody other thing.  Might be able to do this operation vectorized over all of the time axis, but might not be able to.  In any case, this needs to get ironed out for both the Harvey and Shen methods for grad(b)
 
