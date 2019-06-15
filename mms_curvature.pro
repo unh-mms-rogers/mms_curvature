@@ -184,6 +184,41 @@ for t = 0,n_elements(t_master)-1 do begin		; Steps thorugh each time step
 	rc_harvey.y[t] = 1./sqrt(k_harvey.y[t,0]^2 + k_harvey.y[t,1]^2 + k_harvey.y[t,2]^2)
 endfor
 
+; Next step: Need to calculate the osculating plane normal 
+
+
+op_harvey = dblarr(n_elements(t_master), 3)	; initialize variable for osculating plane
+
+for t=0,n_elements(t_master)-1 do begin
+	op_harvey[t,*] = crossp(reform(bm[t,*]), reform(k_harvey.y[t,*]))	; Calculate cross product for Osc. Plane
+	op_norm = sqrt(op_harvey[t,0]^2 + op_harvey[t,1]^2 + op_harvey[t,2]^2)	; Calculate magnitude of cross product
+	op_harvey[t,*] = op_harvey[t,*] * (1./op_norm)		; Normalize Osc. Plane calculation
+endfor
+
+
+; clock angle doesn't work well.  Might be worth looking at when error analysis in place
+
+;rot_clock = dblarr(n_elements(t_master), 4)
+;for t=0,n_elements(t_master)-1 do begin
+;	rot_clock[t,0] = (180/!pi)*atan(k_harvey.y[t,2], k_harvey.y[t,1])	; clock angle about x_gsm (twisting in tail)
+;	rot_clock[t,1] = sqrt(k_harvey.y[t,2]^2 + k_harvey.y[t,1]^2)		; magnitude of the curvature about x_gsm  
+;	rot_clock[t,2] = (180/!pi)*atan(k_harvey.y[t,2], k_harvey.y[t,0])	; clock angle about y_gsm (tilt or flap in tail)
+;	rot_clock[t,3] = sqrt(k_harvey.y[t,2]^2 + k_harvey.y[t,0]^2)		; magnitude of the curvature about y_gsm
+;endfor
+;
+;store_data, 'b_curvature_clock_all', data={x:t_master, y:rot_clock}
+;store_data, 'b_curvature_clock_about_xgsm', data = {x:t_master, y:rot_clock[*,0:1]}
+;store_data, 'b_curvature_clock_about_ygsm', data={x:t_master, y:rot_clock[*,2:3]}
+
+
+; Store all the tplot variables and do a first pass at reasonable options and ylimits
+
+store_data, 'b_osc_plane_normal_gsm', data={x:t_master, y:op_harvey}
+options, 'b_osc_plane_normal_gsm', 'labels', ['x_GSM', 'y_GSM', 'z_GSM']
+options, 'b_osc_plane_normal_gsm', 'colors', [2, 4, 6]
+options, 'b_osc_plane_normal_gsm', 'labflag', -1
+options, 'b_osc_plane_normal_gsm', 'databar', 0.
+
 store_data, 'b_curvature_vector_gsm', data=k_harvey
 store_data, 'b_curvature_radius', data=rc_harvey
 store_data, 'b_gradient_gsm', data=grad_Harvey
