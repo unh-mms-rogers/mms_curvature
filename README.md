@@ -3,7 +3,7 @@ IDL and python3 routines for calculating the magnetic field curvature at the mes
 
 
 ## Version 0.1
-###IDL:
+### IDL:
 Currently have Harvey method working well.  Shen method will follow as soon as I can get to it.  Currently returns tplot variables of:
 
 - *b_gradient_gsm* => grad(B/|B|) ordered in GSM coordinates
@@ -12,7 +12,7 @@ Currently have Harvey method working well.  Shen method will follow as soon as I
 
 A more complete user guide will be forthcoming.
 
-###Python3:
+### Python3:
 Harvey curvature vector is calculated.  Returns numpy arrays of:
 
 - *t_master* => time series in unix time of the interpolated times for which the curvature is calculated
