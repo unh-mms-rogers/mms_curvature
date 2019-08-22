@@ -8,6 +8,7 @@ pro mms_curvature, trange=trange, data_rate=data_rate, makeplot=makeplot, level=
 if undefined(data_rate) then data_rate='srvy'
 if undefined(makeplot) then makeplot=1
 if undefined(level) then level='l2'
+if data_rate ne 'srvy' and data_rate ne 'brst' then data_rate='srvy'
 
 
 ; Load MMS Ephemeris and Coordinate data
