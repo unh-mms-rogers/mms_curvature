@@ -57,27 +57,26 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
     postime2, pos2 = get_data('mms2_mec_r_gsm')
     postime3, pos3 = get_data('mms3_mec_r_gsm')
     postime4, pos4 = get_data('mms4_mec_r_gsm')
-    magtime1, mag1 = get_data('mms1_fgm_b_gsm_srvy_l2')
-    magtime2, mag2 = get_data('mms2_fgm_b_gsm_srvy_l2')
-    magtime3, mag3 = get_data('mms3_fgm_b_gsm_srvy_l2')
-    magtime4, mag4 = get_data('mms4_fgm_b_gsm_srvy_l2')
+    magtime1, mag1 = get_data('mms1_fgm_b_gsm_'+data_rate+'_l2')
+    magtime2, mag2 = get_data('mms2_fgm_b_gsm_'+data_rate+'_l2')
+    magtime3, mag3 = get_data('mms3_fgm_b_gsm_'+data_rate+'_l2')
+    magtime4, mag4 = get_data('mms4_fgm_b_gsm_'+data_rate+'_l2')
     # return all arrays
     return (postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4)
 
 
-def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4, verbose=False): 
+def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4): 
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
     '''
-    if verbose: print("--Begin normalizing magnetic field")   # Verbose status line
+    
     # normalize magnetic fields
     bn1 = mag1[:,0:3]/np.linalg.norm(mag1[:,0:3], ord=2, axis=1, keepdims=True)
     bn2 = mag2[:,0:3]/np.linalg.norm(mag2[:,0:3], ord=2, axis=1, keepdims=True)
     bn3 = mag3[:,0:3]/np.linalg.norm(mag3[:,0:3], ord=2, axis=1, keepdims=True)
     bn4 = mag4[:,0:3]/np.linalg.norm(mag4[:,0:3], ord=2, axis=1, keepdims=True)
     
-    if verbose: print("--Make master time series:")   # Verbose status line
     # find probe with latest beginning point for magnetic field data and what time
     tstart = max(magtime1[0], magtime2[0], magtime3[0], magtime4[0])
     mastersc = np.argmax([magtime1[0], magtime2[0], magtime3[0], magtime4[0]])
@@ -99,7 +98,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
         while magtime4[tend_i] < tend: tend_i += 1
         t_master = magtime4[0:(tend_i+1)]
     
-    if verbose: print("--Interpolate magnetic field to t_master:")   # Verbose status line
     # master mag field data arr, with interpolated values
     barr=np.ndarray((4,t_master.shape[0],3))
     
@@ -119,7 +117,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     barr[3,:,1] = np.interp(t_master, magtime4, mag4[:,1]) 
     barr[3,:,2] = np.interp(t_master, magtime4, mag4[:,2]) 
     
-    if verbose: print("--Interpolate position data to t_master:")   # Verbose status line
     # master position data array, with interpolated value
     rarr = np.ndarray((4,t_master.shape[0],3))
     
@@ -144,7 +141,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # calculate position and normalized magneic field at mesocenter of the fleet
     
-    if verbose: print("--Calculating mesocenter values:")   # Verbose status line
     rm = np.ndarray((t_master.shape[0], 3))
     for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
         for j in range(3):                  # there's got to be a way to vctorize this
@@ -158,7 +154,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # Calculate volumetric tensor (Harvey, Ch 12.4, Eq 12.23, from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.)
     
-    if verbose: print("--Calculating volumetric tensor:")   # Verbose status line
     Rvol = np.ndarray((t_master.shape[0], 3, 3))
     for i in range(t_master.shape[0]):
         Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))
