@@ -188,7 +188,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
                         # endfor
                     # endfor
                 # endfor
-                grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # possibly shouldn't be np.outer... just matrix mult?
+                grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,j,:])     # possibly shouldn't be np.outer... just matrix mult?
             # endfor
         curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
     # endfor
