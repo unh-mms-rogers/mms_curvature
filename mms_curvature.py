@@ -72,13 +72,18 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     '''
     
     # normalize magnetic fields
-    bn1 = mag1[:,0:3]/np.linalg.norm(mag1[:,0:3], ord=2, axis=1, keepdims=True)
-    bn2 = mag2[:,0:3]/np.linalg.norm(mag2[:,0:3], ord=2, axis=1, keepdims=True)
-    bn3 = mag3[:,0:3]/np.linalg.norm(mag3[:,0:3], ord=2, axis=1, keepdims=True)
-    bn4 = mag4[:,0:3]/np.linalg.norm(mag4[:,0:3], ord=2, axis=1, keepdims=True)
+#    bn1 = mag1[:,0:3]/np.linalg.norm(mag1[:,0:3], ord=2, axis=1, keepdims=True)
+#    bn2 = mag2[:,0:3]/np.linalg.norm(mag2[:,0:3], ord=2, axis=1, keepdims=True)
+#    bn3 = mag3[:,0:3]/np.linalg.norm(mag3[:,0:3], ord=2, axis=1, keepdims=True)
+#    bn4 = mag4[:,0:3]/np.linalg.norm(mag4[:,0:3], ord=2, axis=1, keepdims=True)
     
+    bn1 = mag1[:,0:3]/mag1[:,3,np.newaxis]
+    bn2 = mag2[:,0:3]/mag2[:,3,np.newaxis]
+    bn3 = mag3[:,0:3]/mag3[:,3,np.newaxis]
+    bn4 = mag4[:,0:3]/mag4[:,3,np.newaxis]
+
     # find probe with latest beginning point for magnetic field data and what time
-    tstart = max(magtime1[0], magtime2[0], magtime3[0], magtime4[0])
+    # tstart = max(magtime1[0], magtime2[0], magtime3[0], magtime4[0])
     mastersc = np.argmax([magtime1[0], magtime2[0], magtime3[0], magtime4[0]])
     # find earliest end time for all space craft in range
     tend = min(magtime1[-1], magtime2[-1], magtime3[-1], magtime4[-1])
@@ -141,6 +146,8 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # calculate position and normalized magneic field at mesocenter of the fleet
     
+    
+
     rm = np.ndarray((t_master.shape[0], 3))
     for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
         for j in range(3):                  # there's got to be a way to vctorize this
@@ -156,7 +163,13 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     Rvol = np.ndarray((t_master.shape[0], 3, 3))
     for i in range(t_master.shape[0]):
-        Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))
+        rvol_step = np.zeros([3,3])
+        for sc in range(4):
+            rvol_step = rvol_step + np.outer(rarr[sc,i,:], rarr[sc,i,:])
+        # endfor
+        Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
+        
+        # Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))
     
     Rinv = np.linalg.inv(Rvol)
     a_ne_b_list=[[1,2,3],[2,3],[3]]
