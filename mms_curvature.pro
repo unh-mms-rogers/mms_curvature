@@ -196,6 +196,15 @@ for t=0,n_elements(t_master)-1 do begin
 	op_harvey[t,*] = op_harvey[t,*] * (1./op_norm)		; Normalize Osc. Plane calculation
 endfor
 
+; Storing additional intermediate parameters to help troubleshoot python port
+store_data, 'b_curve_rarr', data={x:t_master, y:rarr}
+store_data, 'b_curve_barr', data={x:t_master, y:barr}
+store_data, 'b_curve_rm', data={x:t_master, y:rm}
+store_data, 'b_curve_bm', data={x:t_master, y:bm}
+store_data, 'b_curve_Rvol', data={x:t_master, y:Rvol}
+store_data, 'b_curve_Rinv', data={x:t_master, y:Rinv}
+
+
 
 ; clock angle doesn't work well.  Might be worth looking at when error analysis in place
 

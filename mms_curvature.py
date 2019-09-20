@@ -50,8 +50,8 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
 
     '''
     # load data files from SDC/local storage into tplot variables
-    pyspedas.mms_load_mec(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, level=level)
-    pyspedas.mms_load_fgm(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, level=level)
+    pyspedas.mms_load_mec(trange=trange, probe=['1', '2', '3', '4'], data_rate='srvy', level=level, time_clip=True)
+    pyspedas.mms_load_fgm(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, level=level, time_clip=True)
     # extract data from tplot variables to numpy arrays.  NOTE: all done in GSM.
     postime1, pos1 = get_data('mms1_mec_r_gsm')
     postime2, pos2 = get_data('mms2_mec_r_gsm')
@@ -65,7 +65,7 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
     return (postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4)
 
 
-def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4): 
+def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4, report_all=False): 
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
@@ -106,21 +106,52 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     # master mag field data arr, with interpolated values
     barr=np.ndarray((4,t_master.shape[0],3))
     
-    barr[0,:,0] = np.interp(t_master, magtime1, mag1[:,0]) # MMS1
-    barr[0,:,1] = np.interp(t_master, magtime1, mag1[:,1]) 
-    barr[0,:,2] = np.interp(t_master, magtime1, mag1[:,2]) 
+    barr[0,:,0] = np.interp(t_master, magtime1, bn1[:,0]) # MMS1
+    barr[0,:,1] = np.interp(t_master, magtime1, bn1[:,1]) 
+    barr[0,:,2] = np.interp(t_master, magtime1, bn1[:,2]) 
     
-    barr[1,:,0] = np.interp(t_master, magtime2, mag2[:,0]) # MMS2
-    barr[1,:,1] = np.interp(t_master, magtime2, mag2[:,1]) 
-    barr[1,:,2] = np.interp(t_master, magtime2, mag2[:,2]) 
+    barr[1,:,0] = np.interp(t_master, magtime2, bn2[:,0]) # MMS2
+    barr[1,:,1] = np.interp(t_master, magtime2, bn2[:,1]) 
+    barr[1,:,2] = np.interp(t_master, magtime2, bn2[:,2]) 
     
-    barr[2,:,0] = np.interp(t_master, magtime3, mag3[:,0]) # MMS3
-    barr[2,:,1] = np.interp(t_master, magtime3, mag3[:,1]) 
-    barr[2,:,2] = np.interp(t_master, magtime3, mag3[:,2]) 
+    barr[2,:,0] = np.interp(t_master, magtime3, bn3[:,0]) # MMS3
+    barr[2,:,1] = np.interp(t_master, magtime3, bn3[:,1]) 
+    barr[2,:,2] = np.interp(t_master, magtime3, bn3[:,2]) 
     
-    barr[3,:,0] = np.interp(t_master, magtime4, mag4[:,0]) # MMS4
-    barr[3,:,1] = np.interp(t_master, magtime4, mag4[:,1]) 
-    barr[3,:,2] = np.interp(t_master, magtime4, mag4[:,2]) 
+    barr[3,:,0] = np.interp(t_master, magtime4, bn4[:,0]) # MMS4
+    barr[3,:,1] = np.interp(t_master, magtime4, bn4[:,1]) 
+    barr[3,:,2] = np.interp(t_master, magtime4, bn4[:,2]) 
+    '''
+    # need to clear extranious data points from positional data for
+    #   np.interp to work as intended.
+    bcnt = 0        # MMS1
+    while postime1[bcnt] < t_master[0] and bcnt: bcnt = bcnt + 1
+    ecnt = bcnt
+    while postime1[ecnt] <= t_master[-1]: ecnt = ecnt + 1
+    pos1 = pos1[(bcnt-1):(ecnt+1),:]
+    postime1 = postime1[(bcnt-1):(ecnt+1),:]
+   
+    bcnt = 0        # MMS2
+    while postime2[bcnt] < t_master[0]: bcnt = bcnt + 1
+    ecnt = bcnt
+    while postime2[ecnt] <= t_master[-1]: ecnt = ecnt + 1
+    pos2 = pos2[(bcnt-1):(ecnt+1),:]
+    postime2 = postime2[(bcnt-1):(ecnt+1),:]
+
+    bcnt = 0        # MMS3
+    while postime3[bcnt] < t_master[0]: bcnt = bcnt + 1
+    ecnt = bcnt
+    while postime3[ecnt] <= t_master[-1]: ecnt = ecnt + 1
+    pos3 = pos3[(bcnt-1):(ecnt+1),:]
+    postime3 = postime3[(bcnt-1):(ecnt+1),:]
+    
+    bcnt = 0        # MMS4
+    while postime4[bcnt] < t_master[0]: bcnt = bcnt + 1
+    ecnt = bcnt
+    while postime4[ecnt] <= t_master[-1]: ecnt = ecnt + 1
+    pos4 = pos4[(bcnt-1):(ecnt+1),:]
+    postime4 = postime4[(bcnt-1):(ecnt+1),:]
+    ''' 
     
     # master position data array, with interpolated value
     rarr = np.ndarray((4,t_master.shape[0],3))
@@ -164,12 +195,12 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     Rvol = np.ndarray((t_master.shape[0], 3, 3))
     for i in range(t_master.shape[0]):
         rvol_step = np.zeros([3,3])
-        for sc in range(4):
-            rvol_step = rvol_step + np.outer(rarr[sc,i,:], rarr[sc,i,:])
+        #for sc in range(4):
+        #    rvol_step = rvol_step + np.outer(rarr[sc,i,:], rarr[sc,i,:])
         # endfor
-        Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
+        #Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
         
-        # Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))
+        Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))
     
     Rinv = np.linalg.inv(Rvol)
     a_ne_b_list=[[1,2,3],[2,3],[3]]
@@ -188,12 +219,15 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
                         # endfor
                     # endfor
                 # endfor
-                grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,j,:])     # possibly shouldn't be np.outer... just matrix mult?
+                grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # possibly shouldn't be np.outer... just matrix mult?
             # endfor
         curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
     # endfor
     
-    return (t_master, grad_Harvey, curve_Harvey)
+    if report_all:
+        return (t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, Rvol, Rinv)  #used for troubleshooting
+    else:
+        return (t_master, grad_Harvey, curve_Harvey)
     
 
 
