@@ -215,17 +215,32 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
                 dbdr = np.zeros(3)          # a != b summation row vector from Harvey.  Re-initialized as zeros for each i,j
                 for k in range(3):          # step through k-index.  May be able to eliminate this with vectorization later
                     for a in range(3):      # step through spacecraft MMS1-3; MMS4 done implicitly
-                        for b in a_ne_b_list[a]:
+                        for b in a_ne_b_list[a]:    # Does not contain MMS1 (done by stepping through it in previous loop); provides sc_a != sc_b summation in Harvey (12.18)
                             dbdr[k] = dbdr[k] + ((barr[a,t,i] - barr[b,t,i]) * (rarr[a,t,k] - rarr[b,t,k]))
                         # endfor
                     # endfor
                 # endfor
-                grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # Gives the same result as below
+                # grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # Gives the same result as below
+                grad_Harvey[t,i,j] = (1./16.) * np.matmul(Rinv[t,:,j], dbdr)     # Gives the same result as below
                 #grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, np.linalg.inv(Rvol[t,:,:])[:,j])    # Maybe linalg.inv doesn't vectorize the way I think?
             # endfor
-        curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
+        # curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
+        curve_Harvey[t,:] = np.matmul(grad_Harvey[t,:,:], bm[t,:])               # Order of matmul has BIG effet!
     # endfor
+    '''
+    # Solenoid correction from Harvey (12.20)
+    # lm = np.ndarray((t_master.shape[0]))
+    lm = np.divide(np.trace(grad_Harvey, axis1=1, axis2=2), np.trace(Rinv, axis1=1, axis2=2))
     
+    nRinv = np.ndarray(Rinv.shape)
+    for t in range(t_master.shape[0]):
+        nRinv[t,:,:] = lm[t]*Rinv[t,:,:]
+
+    sol_grad_Harvey = grad_Harvey - nRinv
+    sol_curve_Harvey = np.ndarray((t_master.shape[0], 3))
+    for t in range(t_master.shape[0]):
+        sol_curve_Harvey[t,:] = np.matmul(sol_grad_Harvey[t,:,:], bm[t,:])
+    '''         # Solinoid correction has litle effect, which is ot surprising
     if report_all:
         return (t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, Rvol, Rinv)  #used for troubleshooting
     else:
