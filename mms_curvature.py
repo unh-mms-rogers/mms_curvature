@@ -195,13 +195,13 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     Rvol = np.ndarray((t_master.shape[0], 3, 3))
     for i in range(t_master.shape[0]):
-        rvol_step = np.zeros([3,3])
-        for sc in range(4):
-            rvol_step = rvol_step + np.outer(rarr[sc,i,:], rarr[sc,i,:])
-        # endfor
-        Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
+        #rvol_step = np.zeros([3,3])    # Stepwise method gives same result as explicit below
+        #for sc in range(4):
+        #    rvol_step = rvol_step + np.outer(rarr[sc,i,:], rarr[sc,i,:])
+        ## endfor
+        #Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
         
-        # Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))
+        Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))     # give same result as stepwise above
     
     Rinv = np.linalg.inv(Rvol)
     a_ne_b_list=[[1,2,3],[2,3],[3]]
@@ -220,8 +220,8 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
                         # endfor
                     # endfor
                 # endfor
-                grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # possibly shouldn't be np.outer... just matrix mult?
-                # grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, np.linalg.inv(Rvol[t,:,:])[:,j])    # Maybe linalg.inv doesn't vectorize the way I think?
+                grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # Gives the same result as below
+                #grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, np.linalg.inv(Rvol[t,:,:])[:,j])    # Maybe linalg.inv doesn't vectorize the way I think?
             # endfor
         curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
     # endfor
