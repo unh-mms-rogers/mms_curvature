@@ -76,7 +76,9 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
 #    bn2 = mag2[:,0:3]/np.linalg.norm(mag2[:,0:3], ord=2, axis=1, keepdims=True)
 #    bn3 = mag3[:,0:3]/np.linalg.norm(mag3[:,0:3], ord=2, axis=1, keepdims=True)
 #    bn4 = mag4[:,0:3]/np.linalg.norm(mag4[:,0:3], ord=2, axis=1, keepdims=True)
-    
+
+
+
     bn1 = mag1[:,0:3]/mag1[:,3,np.newaxis]
     bn2 = mag2[:,0:3]/mag2[:,3,np.newaxis]
     bn3 = mag3[:,0:3]/mag3[:,3,np.newaxis]
@@ -120,7 +122,15 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     barr[3,:,0] = np.interp(t_master, magtime4, bn4[:,0]) # MMS4
     barr[3,:,1] = np.interp(t_master, magtime4, bn4[:,1]) 
     barr[3,:,2] = np.interp(t_master, magtime4, bn4[:,2]) 
-    
+
+
+    # Calculate average |B| for export
+    B1 = np.interp(t_master, magtime1, mag1[:,3])
+    B2 = np.interp(t_master, magtime2, mag2[:,3])
+    B3 = np.interp(t_master, magtime3, mag3[:,3])
+    B4 = np.interp(t_master, magtime4, mag4[:,3])
+    bmag = np.average([B1, B2, B3, B4], axis=0)
+
     # The below now done using time_clip=True in DataLoad
     '''
     # need to clear extranious data points from positional data for
@@ -173,22 +183,22 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     rarr[3,:,1] = np.interp(t_master, postime4, pos4[:,1])
     rarr[3,:,2] = np.interp(t_master, postime4, pos4[:,2])
     
-    # Now all magnetic fields and positional dataof of the same cadance and at the same times for each index
-    # Indicies are: [s/c(0=mms1, 1=mms2, 2=mms3, 3=mms4), time_step, vector(0=x, 1=y, 2=z)]
+    # Now all magnetic fields and positional data of of the same cadence and at the same times for each index
+    # Indices are: [s/c(0=mms1, 1=mms2, 2=mms3, 3=mms4), time_step, vector(0=x, 1=y, 2=z)]
     
-    # calculate position and normalized magneic field at mesocenter of the fleet
+    # calculate position and normalized magnetic field at mesocenter of the fleet
     
     
 
     rm = np.ndarray((t_master.shape[0], 3))
     for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
-        for j in range(3):                  # there's got to be a way to vctorize this
+        for j in range(3):                  # there's got to be a way to vectorize this
             #print("rm:", rm.shape, "rarr:", rarr.shape)
             rm[i,j] = (1./4.)*(rarr[0,i,j]+rarr[1,i,j]+rarr[2,i,j]+rarr[3,i,j])
     
     bm = np.ndarray((t_master.shape[0], 3))
     for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
-        for j in range(3):                  # there's got to be a way to vctorize this
+        for j in range(3):                  # there's got to be a way to vectorize this
             bm[i,j] = (1./4.)*(barr[0,i,j]+barr[1,i,j]+barr[2,i,j]+barr[3,i,j])
     
     # Calculate volumetric tensor (Harvey, Ch 12.4, Eq 12.23, from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.)
@@ -225,7 +235,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
                 #grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, np.linalg.inv(Rvol[t,:,:])[:,j])    # Maybe linalg.inv doesn't vectorize the way I think?
             # endfor
         # curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
-        curve_Harvey[t,:] = np.matmul(grad_Harvey[t,:,:], bm[t,:])               # Order of matmul has BIG effet!
+        curve_Harvey[t,:] = np.matmul(grad_Harvey[t,:,:], bm[t,:])               # Order of matmul has BIG effect!
     # endfor
     '''
     # Solenoid correction from Harvey (12.20)
@@ -240,9 +250,9 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     sol_curve_Harvey = np.ndarray((t_master.shape[0], 3))
     for t in range(t_master.shape[0]):
         sol_curve_Harvey[t,:] = np.matmul(sol_grad_Harvey[t,:,:], bm[t,:])
-    '''         # Solinoid correction has litle effect, which is ot surprising
+    '''         # Solenoid correction has little effect, which is not surprising
     if report_all:
-        return (t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, Rvol, Rinv)  #used for troubleshooting
+        return (t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, bmag, Rvol, Rinv)  #used for troubleshooting
     else:
         return (t_master, grad_Harvey, curve_Harvey)
     
