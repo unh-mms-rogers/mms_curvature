@@ -13,6 +13,8 @@ import datetime as dt
 from urllib.parse import parse_qs
 import mms_utils
 
+def EnsurePathExists(pathname):
+    if not os.path.isdir(pathname): os.makedirs(pathname, exist_ok=True)
 
 class MMS_SDC_API_CLIENT:
     """Interface with NASA's MMS SDC API
@@ -193,9 +195,9 @@ class MMS_SDC_API_CLIENT:
         # Return the resulting request
         return r
     
-    def EnsurePathExists(self, pathname):
-        if not os.path.isdir(pathname):
-            os.makedirs(pathname, exist_ok=True)
+    #def EnsurePathExists(self, pathname):
+    #    if not os.path.isdir(pathname):
+    #        os.makedirs(pathname, exist_ok=True)
     
     def DownloadFile(self, info):
         # Amount to download per iteration
