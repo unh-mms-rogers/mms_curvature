@@ -7,6 +7,9 @@ Created on Sun Feb 25 13:34:47 2018
 """
 
 # File modified from original found in pymms repository:  https://github.com/argallmr/pymms
+#
+# All modifications copyright 2019 Tim Rogers.  All rights reserved.
+# Released under the MIT license.
 
 import os
 import datetime as dt

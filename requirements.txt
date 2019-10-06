@@ -1,2 +1,4 @@
 requests
 p_tqdm
+cdflib
+numpy

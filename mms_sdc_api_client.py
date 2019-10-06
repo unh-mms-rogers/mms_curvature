@@ -1,5 +1,8 @@
 
 # File modified from original found in pymms repository:  https://github.com/argallmr/pymms
+#
+# All modifications copyright 2019 Tim Rogers.  All rights reserved.
+# Released under the MIT license.
 
 import glob
 import os
@@ -14,7 +17,10 @@ from urllib.parse import parse_qs
 import mms_utils
 
 def EnsurePathExists(pathname):
-    if not os.path.isdir(pathname): os.makedirs(pathname, exist_ok=True)
+    if not os.path.isdir(os.path.dirname(pathname)): os.makedirs(os.path.dirname(pathname), exist_ok=True)
+
+def RemoveIfExists(pathname):
+    if os.path.isfile(pathname): os.remove(pathname)
 
 class MMS_SDC_API_CLIENT:
     """Interface with NASA's MMS SDC API
@@ -50,10 +56,8 @@ class MMS_SDC_API_CLIENT:
                  anc_product=None,
                  data_type='science',
                  data_root=None,
-                 dropbox_root=None,
                  end_date=None,
                  files=None,
-                 mirror_root=None,
                  offline=False,
                  optdesc=None,
                  site='public',
@@ -67,11 +71,9 @@ class MMS_SDC_API_CLIENT:
         
         self.anc_product = anc_product
         self.data_type = data_type
-        self.dropbox_root = dropbox_root
         self.end_date = end_date
         self.instr = instr
         self.level = level
-        self.mirror_root = mirror_root
         self.mode = mode
         self.offline = offline
         self.optdesc = optdesc
@@ -110,7 +112,7 @@ class MMS_SDC_API_CLIENT:
             self.data_type = 'ancillary'
         elif name == 'data_type':
             if value not in ('ancillary', 'hk', 'science'):
-                raise ValueError('Invalid value for attribute "' + name + '".')
+                raise ValueError('Invalid value for attribute "' + name + '":"' + value + '".')
         elif name == 'files':
             if value is not None:
                 self.sc = None
@@ -182,7 +184,7 @@ class MMS_SDC_API_CLIENT:
                 if r.ok:
                     break
                 else:
-                    Print('Incorrect username or password. %d tries remaining.' % maxAttempts-nAttemps)
+                    print('Incorrect username or password. %d tries remaining.' % maxAttempts-nAttemtps)
                     nAttempts += 1
             
             # Failed log-in
@@ -199,7 +201,7 @@ class MMS_SDC_API_CLIENT:
     #    if not os.path.isdir(pathname):
     #        os.makedirs(pathname, exist_ok=True)
     
-    def DownloadFile(self, info):
+    def DownloadFile(self, info, url):
         # Amount to download per iteration
         block_size = 1024*128
         # Create the destination directory
@@ -216,8 +218,7 @@ class MMS_SDC_API_CLIENT:
                     if chunk: # filter out keep-alive new chunks
                         f.write(chunk)
         except:
-            if os.path.isfile(file):
-                os.remove(file)
+            RemoveIfExists(file)
             raise
         
         return file
@@ -233,39 +234,47 @@ class MMS_SDC_API_CLIENT:
         if self.offline:
             return local_files
         
-        # Get information on the files that were found
-        #   - To do that, specify the specific files. This sets all other properties to None
-        #   - Save the state of the object as it currently is so that it can be restored
-        #   - Setting FILES will indirectly cause SITE='public'. Keep track of SITE.
-        site = self.site
-        state = {}
-        state['sc'] = self.sc
-        state['instr'] = self.instr
-        state['mode'] = self.mode
-        state['level'] = self.level
-        state['optdesc'] = self.optdesc
-        state['version'] = self.version
-        state['files'] = self.files
-        self.files = [file.split('/')[-1] for file in remote_files]
+        print('Local file count: '+str(len(local_files)))
+        print('Non-local file count: '+str(len(remote_files)))
         
-        self.site = site
-        file_info = self.FileInfo()
+        if len(remote_files) > 0: # Only need to perform download if we're missing data files.
         
-        
-        # Download files individually, in parallel
-        try:
-            newfiles = p_map(self.DownloadFile,file_info['files'])
-        except:
+            # Get information on the files that were found
+            #   - To do that, specify the specific files. This sets all other properties to None
+            #   - Save the state of the object as it currently is so that it can be restored
+            #   - Setting FILES will indirectly cause SITE='public'. Keep track of SITE.
+            site = self.site
+            state = {}
+            state['sc'] = self.sc
+            state['instr'] = self.instr
+            state['mode'] = self.mode
+            state['level'] = self.level
+            state['optdesc'] = self.optdesc
+            state['version'] = self.version
+            state['files'] = self.files
+            self.files = [file.split('/')[-1] for file in remote_files]
+            
+            print('List of files to download:')
+            for f in self.files: print('+  '+f)
+            
+            self.site = site
+            file_info = self.FileInfo()
+            
+            
+            # Download files individually, in parallel
+            try:
+                newfiles = p_map(self.DownloadFile,file_info['files'], url)
+            except:
+                for key in state:
+                    self.files = None
+                    setattr(self, key, state[key])
+                raise
+                
+            local_files.extend(newfiles)
+            
             for key in state:
                 self.files = None
                 setattr(self, key, state[key])
-            raise
-            
-        local_files.extend(newfiles)
-        
-        for key in state:
-            self.files = None
-            setattr(self, key, state[key])
         
         return local_files
     
@@ -342,7 +351,7 @@ class MMS_SDC_API_CLIENT:
                 
             for file in glob.glob(os.path.basename(path)):
                 result.append(os.path.join(root, file))
-
+    
         os.chdir(pwd)
         
         return result
@@ -510,10 +519,12 @@ class MMS_SDC_API_CLIENT:
         # os.path.join() requires string arguments, but str.split() return list.
         #   - Unpack with *: https://docs.python.org/2/tutorial/controlflow.html#unpacking-argument-lists
         local_names =list()
-        for file in remote_names:
+        if not isinstance(remote_names, list): remote = [remote_names]
+        else: remote = remote_names
+        for file in remote:
             local_names.append(os.path.join(self.data_root, *file.split('/')[2:]))
         
-        if (len(remote_names) == 1) & (type(remote_names) == 'str'):
+        if (len(remote) == 1) & (type(remote_names) == 'str'):
             local_names = local_names[0]
         
         return local_names

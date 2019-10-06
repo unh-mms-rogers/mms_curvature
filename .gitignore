@@ -1,0 +1,5 @@
+#patterns to ignore during commits
+
+__pycache__/
+data/
+pydata/
