@@ -155,17 +155,28 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     # calculate position and normalized magnetic field at mesocenter of the fleet
     
     
-
-    rm = np.ndarray((t_master.shape[0], 3))
-    for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
-        for j in range(3):                  # there's got to be a way to vectorize this
-            #print("rm:", rm.shape, "rarr:", rarr.shape)
-            rm[i,j] = (1./4.)*(rarr[0,i,j]+rarr[1,i,j]+rarr[2,i,j]+rarr[3,i,j])
+    # Commenting old implementation
+    #rm = np.ndarray((t_master.shape[0], 3))
+    #for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
+    #    for j in range(3):                  # there's got to be a way to vectorize this
+    #        #print("rm:", rm.shape, "rarr:", rarr.shape)
+    #        rm[i,j] = (1./4.)*(rarr[0,i,j]+rarr[1,i,j]+rarr[2,i,j]+rarr[3,i,j])
+    #
+    #bm = np.ndarray((t_master.shape[0], 3))
+    #for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
+    #    for j in range(3):                  # there's got to be a way to vectorize this
+    #        bm[i,j] = (1./4.)*(barr[0,i,j]+barr[1,i,j]+barr[2,i,j]+barr[3,i,j])
+    # End of old implementation.
     
-    bm = np.ndarray((t_master.shape[0], 3))
-    for i in range(t_master.shape[0]):      # populate each element of the mesocenter with the average across all four s/c
-        for j in range(3):                  # there's got to be a way to vectorize this
-            bm[i,j] = (1./4.)*(barr[0,i,j]+barr[1,i,j]+barr[2,i,j]+barr[3,i,j])
+    # Vectorized version of above, using numpy built-in ufuncs.
+    # - inner operation `np.add.reduce(input, axis=0)`: .reduce collapses the input array along the specified
+    #   axis (0 by default), using the prefaced ufunc (add) to merge array values.
+    #     Layman's version:  Add up the respective coordinate components from each bird.
+    # - outer operation `np.divide(input1,input2)`: Divides each element in input1 by the respective element
+    #   in input 2.  If input2 is of lesser dimensions than input1, input2 will be expanded/broadcast to fit.
+    #     Layman's version:  Divide each component of the inner results by the number of birds.
+    rm = np.divide(np.add.reduce(rarr),rarr.shape[0])
+    bm = np.divide(np.add.reduce(barr),barr.shape[0])
     
     # Calculate volumetric tensor (Harvey, Ch 12.4, Eq 12.23, from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.)
     
