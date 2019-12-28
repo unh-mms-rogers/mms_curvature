@@ -28,7 +28,7 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                  #prefix='', suffix='', plot=False, merge=False,
                  #center_measurement=False, notplot=False):
     """
-    This function will automatically create tplot variables from CDF files.
+    This function will load datasets and metadata from CDF files.
     .. note::
     Variables must have an attribute named "VAR_TYPE". If the attribute entry
     is "data" (or "support_data"), then they will be added as tplot variables.

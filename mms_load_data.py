@@ -38,7 +38,6 @@ import requests
 import logging
 import numpy as np
 from mms_curvature.load_cdf import load_cdf
-import mms_curvature.mms_load_data_shims as mms_load_data_shims
 from p_tqdm import p_map
 
 #from ..spdtplot.cdf_to_tplot import cdf_to_tplot
@@ -341,9 +340,14 @@ def mms_data_time_clip(data_dict, start_time, end_time):
         # Update the datasets
         for axis in dataset.keys():
             # Only clip the axis if it is a list/array instead of a scalar.
-            #if len(dataset[axis].shape) >= 1:      # bug fixing...
-            if len(dataset[axis]) >= 1:
-                dataset[axis] = dataset[axis][start_index:end_index]
+            if isinstance(dataset[axis], list):  # It's a list!
+                if len(dataset[axis]) >= 1:
+                    dataset[axis] = dataset[axis][start_index:end_index]
+            elif isinstance(dataset[axis], np.ndarray):  # It's a numpy array!
+                if len(dataset[axis].shape) >= 1:
+                    dataset[axis] = dataset[axis][start_index:end_index]
+            #else: It's neither.  no-op
 
-    # Return the updated data dictionary
-    return data_dict
+    # Dictionary was directly altered.  Removing the return value as redundant.
+    ## Return the updated data dictionary
+    ##return data_dict
