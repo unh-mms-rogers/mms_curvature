@@ -1,4 +1,4 @@
-import mms_curvature.mms_load_data_shims as shims
+from . import mms_load_data_shims as shims
 import logging
 
 def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', level='l2'):

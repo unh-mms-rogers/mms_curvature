@@ -37,7 +37,7 @@ import os
 import requests
 import logging
 import numpy as np
-from mms_curvature.load_cdf import load_cdf
+from .load_cdf import load_cdf
 from p_tqdm import p_map
 
 #from ..spdtplot.cdf_to_tplot import cdf_to_tplot
@@ -52,7 +52,7 @@ from datetime import timedelta, datetime, timezone
 #from .mms_files_in_interval import mms_files_in_interval
 #from .mms_login_lasp import mms_login_lasp
 
-import mms_curvature.mms_sdc_api_client as mms_sdc_api_client
+from . import mms_sdc_api_client as mms_sdc_api_client
 
 logging.captureWarnings(True)
 logging.basicConfig(format='%(asctime)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)

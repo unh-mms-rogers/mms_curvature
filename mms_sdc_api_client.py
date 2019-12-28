@@ -14,7 +14,7 @@ from p_tqdm import p_map
 # from tqdm import tqdm
 import datetime as dt
 from urllib.parse import parse_qs
-import mms_curvature.mms_utils as mms_utils
+from . import mms_utils
 
 def EnsurePathExists(pathname):
     if not os.path.isdir(os.path.dirname(pathname)): os.makedirs(os.path.dirname(pathname), exist_ok=True)
