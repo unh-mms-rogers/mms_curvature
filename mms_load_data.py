@@ -38,7 +38,7 @@ import requests
 import logging
 import numpy as np
 from load_cdf import load_cdf
-import mms_load_data_shims
+import mms_curvature.mms_load_data_shims
 from p_tqdm import p_map
 
 #from ..spdtplot.cdf_to_tplot import cdf_to_tplot

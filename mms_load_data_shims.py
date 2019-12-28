@@ -4,7 +4,7 @@ This module contains routines for loading MMS data
 
 """
 
-from mms_load_data import mms_load_data
+from mms_curvature.mms_load_data import mms_load_data
 
 
 # Leaving these imports listed here for my reference toward future implementation.

@@ -19,8 +19,8 @@ def deepcheck(sidea,sideb):
     return answer
   return sidea == sideb
   
-import dataload_parallel as parallel
-import dataload_spedas as spedas
+import mms_curvature.dataload_parallel as parallel
+import mms_curvature.dataload_spedas as spedas
 import datetime as dt
 a=[]
 b=[]
