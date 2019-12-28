@@ -37,8 +37,8 @@ import os
 import requests
 import logging
 import numpy as np
-from load_cdf import load_cdf
-import mms_curvature.mms_load_data_shims
+from mms_curvature.load_cdf import load_cdf
+import mms_curvature.mms_load_data_shims as mms_load_data_shims
 from p_tqdm import p_map
 
 #from ..spdtplot.cdf_to_tplot import cdf_to_tplot
@@ -53,7 +53,7 @@ from datetime import timedelta, datetime, timezone
 #from .mms_files_in_interval import mms_files_in_interval
 #from .mms_login_lasp import mms_login_lasp
 
-import mms_sdc_api_client
+import mms_curvature.mms_sdc_api_client as mms_sdc_api_client
 
 logging.captureWarnings(True)
 logging.basicConfig(format='%(asctime)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
@@ -341,7 +341,8 @@ def mms_data_time_clip(data_dict, start_time, end_time):
         # Update the datasets
         for axis in dataset.keys():
             # Only clip the axis if it is a list/array instead of a scalar.
-            if len(dataset[axis].shape) >= 1:
+            #if len(dataset[axis].shape) >= 1:      # bug fixing...
+            if len(dataset[axis]) >= 1:
                 dataset[axis] = dataset[axis][start_index:end_index]
 
     # Return the updated data dictionary
