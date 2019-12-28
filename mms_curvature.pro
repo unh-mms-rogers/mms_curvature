@@ -177,11 +177,14 @@ for t = 0,n_elements(t_master)-1 do begin		; Steps thorugh each time step
 					endforeach
 				endfor
 			endfor
-			grad_Harvey.y[t,i,j] = (1./16.) * transpose(dbdr) # reform(Rinv[t,*,j])	; original index order
+			; grad_Harvey.y[t,i,j] = (1./16.) * transpose(dbdr) # reform(Rinv[t,*,j])	; original index order
+			grad_Harvey.y[t,i,j] = (1./16.) * transpose(reform(Rinv[t,*,j])) # dbdr  ; original index order
 		endfor
 	endfor
 	; Put in any other time-step calculations here, e.g. b.grad(b)
+	; k_harvey.y[t,*] = transpose(bm[t,*]) # reform(grad_Harvey.y[t,*,*])
 	k_harvey.y[t,*] = transpose(bm[t,*]) # reform(grad_Harvey.y[t,*,*])
+
 	rc_harvey.y[t] = 1./sqrt(k_harvey.y[t,0]^2 + k_harvey.y[t,1]^2 + k_harvey.y[t,2]^2)
 endfor
 
