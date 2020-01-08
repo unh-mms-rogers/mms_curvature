@@ -4,8 +4,7 @@ calculate ion and electron gyroradius suing pyspedas
 '''
 
 import numpy as np
-import pyspedas
-from pytplot import get_data
+import mms_curvature as curvature
 
 def DataLoadMoments(trange=['2017-05-01', '2017-05-02'], data_rate='srvy', level='l2', probe='1'):
     '''
@@ -27,11 +26,13 @@ def DataLoadMoments(trange=['2017-05-01', '2017-05-02'], data_rate='srvy', level
     else: fpirate=data_rate
 
     # Load datafiles from SDC/local storage into pytplot variables
-    pyspedas.mms_load_fpi(trange=trange, probe=probe, data_rate=fpirate, level=level, datatype=['dis-moms', 'des-moms'], time_clip=True)
+    fpidata,fpimeta = curvature.mms_load_fpi(trange=trange, probe=probe, data_rate=fpirate, level=level, datatype=['dis-moms', 'des-moms'], time_clip=True)
     
+    distime, distempperp = fpidata['mms'+probe+'_dis_tempperp_'+fpirate].values()
+    destime, destempperp = fpidata['mms'+probe+'_des_tempperp_'+fpirate].values()
     #extract data from tplot variables
-    distime, distempperp = get_data('mms'+probe+'_dis_tempperp_'+fpirate)
-    destime, destempperp = get_data('mms'+probe+'_des_tempperp_'+fpirate)
+    #distime, distempperp = get_data('mms'+probe+'_dis_tempperp_'+fpirate)
+    #destime, destempperp = get_data('mms'+probe+'_des_tempperp_'+fpirate)
     
     # return all arrays
     return (distime, distempperp, destime, destempperp)
