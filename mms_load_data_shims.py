@@ -87,7 +87,7 @@ def mms_load_fgm(
     instrument='fgm'
 
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
-            datatype=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
+            descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update)
     
     #return tvars
@@ -277,7 +277,7 @@ def mms_load_hpca(
     """
 
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='hpca',
-            datatype=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
+            descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update, center_measurement=center_measurement)
     
     return data,metadata
@@ -361,7 +361,7 @@ def mms_load_fpi(
     """
 
     data,metadata = mms_load_data(trange=trange, probe=probe, data_rate=data_rate, level=level, instrument='fpi',
-            datatype=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
+            descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update, center_measurement=center_measurement, notplot=notplot)
     
     return data,metadata
@@ -436,7 +436,7 @@ def mms_load_scm(
 
     """
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='scm',
-            datatype=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
+            descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update)
     return data,metadata
 
@@ -513,7 +513,7 @@ def mms_load_feeps(
     """
     #was: tvars = ...
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='feeps',
-            datatype=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
+            descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
             time_clip=time_clip, no_update=no_update)
 
     
@@ -543,11 +543,11 @@ def mms_load_feeps(
 #
 #               mms_feeps_split_integral_ch(data_unit, datatype, probe, suffix=suffix, data_rate=data_rate, level=level, sensor_eyes=eyes)
 #
-#               mms_feeps_remove_sun(eyes, trange, probe=probe, datatype=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
+#               mms_feeps_remove_sun(eyes, trange, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
 #
-#               mms_feeps_omni(eyes, probe=probe, datatype=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
+#               mms_feeps_omni(eyes, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
 #
-#               mms_feeps_spin_avg(probe=probe, data_units=data_unit, datatype=datatype, data_rate=data_rate, level=level, suffix=suffix)
+#               mms_feeps_spin_avg(probe=probe, data_units=data_unit, descriptor=datatype, data_rate=data_rate, level=level, suffix=suffix)
 #
 #    return tvars
 
@@ -694,7 +694,7 @@ def mms_load_eis(
 
     from .eis.mms_eis_omni import mms_eis_omni
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='epd-eis',
-            datatype=datatype, varformat=varformat, get_support_data=get_support_data, prefix='', suffix='',
+            descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix='', suffix='',
             time_clip=time_clip, no_update=no_update)
 
     if data == []:
@@ -778,7 +778,7 @@ def mms_load_edi(
 
     """
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='edi',
-            datatype=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, time_clip=time_clip, no_update=no_update)
+            descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, time_clip=time_clip, no_update=no_update)
     return data,metadata
 
 
@@ -849,7 +849,7 @@ def mms_load_edp(
 
     """
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='edp',
-            datatype=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
+            descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
             time_clip=time_clip, no_update=no_update)
     return data,metadata
 
@@ -921,7 +921,7 @@ def mms_load_dsp(
 
     """
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='dsp',
-            datatype=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
+            descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
     return data,metadata
 
 
@@ -992,7 +992,7 @@ def mms_load_aspoc(
 
     """
     data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='aspoc',
-            datatype=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
+            descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
             time_clip=time_clip, no_update=no_update)
     return data,metadata
 
@@ -1056,5 +1056,5 @@ def mms_load_fsm(
         List of tplot variables created.
 
     """
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, varformat=varformat, probe=probe, data_rate=data_rate, level=level, instrument='fsm', datatype=datatype, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, varformat=varformat, probe=probe, data_rate=data_rate, level=level, instrument='fsm', descriptor=datatype, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
     return data,metadata
