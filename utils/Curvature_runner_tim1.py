@@ -16,10 +16,13 @@ print("Files Loading:")
 # Set parameters here
 trange=['2017-06-17/20:00', '2017-06-17/21:00']
 data_rate='srvy'
-prefix="CurveGSM_rg_tqf_"
+prefix="~/Work/Curvature/testruns/CurveGSM_rg_tqf_"
 suffix="_tim1"
 save_csv=True
 save_h5=False
+# Uncertainties for instruments
+del_b = 0.1     # 0.1 nT
+del_r = 0.1     # 0.1 km
 ####################################################
 
 # Calculate some additional attributes for later use
@@ -129,7 +132,7 @@ print("Time Loaded: ", time.strftime("%H:%M:%S", time.localtime()))
 
 print("Calculating Curvature:")
 
-t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, bmag= Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4, report_all=True)[0:8]
+t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, bmag, dBmin= Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4, report_all=True)[0:9]
 
 print("Done calculating Curvature.")
 
@@ -152,13 +155,20 @@ while TQFarr[ecnt,0] > t_master[-1]: ecnt = ecnt -1     # find end of trange in 
 print("\n\n*** bcnt= "+str(bcnt)+"   ecnt= "+str(ecnt)+"   ***\n\n")
 TQF = np.interp(t_master, TQFarr[bcnt:ecnt,0].astype('float64'), TQFarr[bcnt:ecnt,1].astype('float64')) # interpolate to match t_master
 
+# Calculate error of curvature
+sig_b = del_b/np.multiply(bm, bmag)
+bpart = np.divide(sig_b, bm)
+dpart = np.divide(sig_b, dBmin)
+rsep = np.interp(t_master, TQFarr[bcnt:ecnt,0].astype('float64'), TQFarr[bcnt:ecnt,2].astype('float64'))
+rpart = np.array([del_r/rsep, del_r/rsep, del_r/rsep])
+sig_k = np.multiply(np.sqrt(np.multiply(bpart, bpart) + np.multiply(dpart, dpart) + np.multiply(rpart, rpart)), curve_Harvey)
 
 # Calculate the magnitude of the curvature to find radius
 curve_norm = np.linalg.norm(curve_Harvey, axis=1)
-
+sig_Rc = np.divide(np.linalg.norm(sig_k, axis=1), np.multiply(curve_norm, curve_norm))
 
 # Construct Pandas data frame of all calculated data for export 
-curvedf = pd.DataFrame({'Rc(km)': 1/curve_norm, '|curve|': curve_norm, 'Curvature_X(GSM)': curve_Harvey.take(0,axis=1), 'Curvature_Y(GSM)': curve_Harvey.take(1,axis=1), 'Curvature_Z(GSM)': curve_Harvey.take(2,axis=1), '|B|': bmag, 'R_gi(km)': r_i, 'R_ge(km)': r_e, 'Position(MLT)': posmltm, 'Position_radius(km)': posrm, 'Position_Xgsm(km)': rm.take(0,axis=1), 'Position_Ygsm(km)': rm.take(1,axis=1), 'Position_Zgsm(km)': rm.take(2,axis=1), 'TQF': TQF}, index=t_master)
+curvedf = pd.DataFrame({'Rc(km)': 1/curve_norm, '|curve|': curve_norm, 'Curvature_X(GSM)': curve_Harvey.take(0,axis=1), 'Curvature_Y(GSM)': curve_Harvey.take(1,axis=1), 'Curvature_Z(GSM)': curve_Harvey.take(2,axis=1), '|B|': bmag, 'R_gi(km)': r_i, 'R_ge(km)': r_e, 'Position(MLT)': posmltm, 'Position_radius(km)': posrm, 'Position_Xgsm(km)': rm.take(0,axis=1), 'Position_Ygsm(km)': rm.take(1,axis=1), 'Position_Zgsm(km)': rm.take(2,axis=1), 'TQF': TQF, 'dKx': sig_k.take(0,axis=1), 'dKy': sig_k.take(1,axis=1), 'dKz': sig_k.take(2,axis=1), 'dRc':sig_Rc}, index=t_master)
 
 print("Writing File: "+filename)
 

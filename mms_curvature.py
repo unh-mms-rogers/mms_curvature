@@ -97,6 +97,8 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     B4 = np.interp(t_master, magtime4, mag4[:,3])
     bmag = np.average([B1, B2, B3, B4], axis=0)
 
+
+
     # The below now done using time_clip=True in DataLoad
     '''
     # need to clear extranious data points from positional data for
@@ -228,8 +230,28 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     for t in range(t_master.shape[0]):
         sol_curve_Harvey[t,:] = np.matmul(sol_grad_Harvey[t,:,:], bm[t,:])
     '''         # Solenoid correction has little effect, which is not surprising
+
+
+    # Use barr and B* to find minimum dB along each axis
+    B_arr = [B1, B2, B3, B4]
+    dBmin = np.full((t_master.shape[0],3), np.inf)     # minimum dB for x,y,z GSM 
+    for t in range(t_master.shape[0]):          # step through the time series
+        for a in range(3):                      # a = MMS 1(0)  -> 3(2); MMS 4 done implicitly
+            for b in a_ne_b_list[a]:            # b for sc_a != sc_b to do all possible combonations
+                tmp_x = (barr[a,t,0] * B_arr[a][t]) - (barr[b,t,0] * B_arr[b][t])
+                tmp_y = (barr[a,t,1] * B_arr[a][t]) - (barr[b,t,1] * B_arr[b][t])
+                tmp_z = (barr[a,t,2] * B_arr[a][t]) - (barr[b,t,2] * B_arr[b][t])
+                if tmp_x < dBmin[t,0]: dBmin[t,0] = tmp_x
+                if tmp_y < dBmin[t,1]: dBmin[t,1] = tmp_y   # finds minimum change in B along each axis
+                if tmp_z < dBmin[t,2]: dBmin[t,2] = tmp_z
+            #end for
+        #end for
+    #end for
+
+
+
     if report_all:
-        return (t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, bmag, Rvol, Rinv)  #used for troubleshooting
+        return (t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)  #used for troubleshooting
     else:
         return (t_master, grad_Harvey, curve_Harvey)
     
