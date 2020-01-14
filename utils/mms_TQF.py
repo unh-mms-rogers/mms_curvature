@@ -14,6 +14,9 @@ def get_TQF(trange=['2017-05-01', '2017-10-01'], datadir="~/data/mms/ancillary/m
     another function which will do appropriate version checking using the SDC
     API and download files as necessary.
     '''
+
+    print('trange = ', trange)
+
     # First create a datetime object of the beginning time and stop time from trange
     btime = dt.datetime.strptime(trange[0][:10], "%Y-%m-%d")
     stime = dt.datetime.strptime(trange[1][:10], "%Y-%m-%d")
