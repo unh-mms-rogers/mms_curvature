@@ -81,27 +81,29 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     
     # We're going to handle everything as datetime objects fo consistancy and easy conversion at-need.
     
+    local_trange = [None,None]
+    
     if type(trange[0]) == datetime: # Already a datetime.
-        pass
+        local_trange[0] = trange[0]
     elif type(trange[0]) in (int,float,np.float32,np.float64): # Convert from posix timestamp if provided.
-        trange[0] = datetime.fromtimestamp(trange[0], timezone.utc)
+        local_trange[0] = datetime.fromtimestamp(trange[0], timezone.utc)
     elif type(trange[0]) == str: # Parse the string and generate a datetime.
-        trange[0] = parse(trange[0])
+        local_trange[0] = parse(trange[0])
     else:
         raise TypeError("Unsupported input format for start date/time.")
     
     if type(trange[1]) == datetime: # Already a datetime.
-        pass
+        local_trange[1] = trange[1]
     elif type(trange[1]) == int: # Convert from posix timestamp if provided.
-        trange[1] = datetime.fromtimestamp(trange[1], timezone.utc)
+        local_trange[1] = datetime.fromtimestamp(trange[1], timezone.utc)
     elif type(trange[1]) == str: # Parse the string and generate a datetime.
-        trange[1] = parse(trange[1])
+        local_trange[1] = parse(trange[1])
     else:
         raise TypeError("Unsupported input format for end date/time.")
     
     # Replicating behavior of pyspedas:
-    start_date = trange[0].date().isoformat() # need to request full day, then parse out later
-    end_date = (trange[1] - timedelta(seconds=1)).isoformat() # -1 second to avoid getting data for the next day
+    start_date = local_trange[0].date().isoformat() # need to request full day, then parse out later
+    end_date = (local_trange[1] - timedelta(seconds=1)).isoformat() # -1 second to avoid getting data for the next day
     
     #download_only = CONFIG['download_only']
     #
@@ -272,7 +274,7 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     
     if time_clip:
         logging.info('Clipping variables to time range...')
-        mms_data_time_clip(new_variables, trange[0], trange[1])
+        mms_data_time_clip(new_variables, local_trange[0], local_trange[1])
     
     return new_variables, new_metadata
     #else:
