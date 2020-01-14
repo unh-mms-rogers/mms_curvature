@@ -27,7 +27,7 @@ def mms_load_fgm(
         probe='1',
         data_rate='srvy',
         level='l2',
-        datatype='',
+        datatype=None,
         varformat=None,
         prefix='',
         suffix='',
@@ -86,9 +86,7 @@ def mms_load_fgm(
 
     instrument='fgm'
 
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
-            descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
-            time_clip=time_clip, no_update=no_update)
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument, descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
     
     #return tvars
 
