@@ -14,10 +14,10 @@ print("Files Loading:")
 
 ####################################################
 # Set parameters here
-trange=['2017-06-17/20:00', '2017-06-17/21:00']
+trange=['2017-06-01/20:00', '2017-06-01/21:00']
 data_rate='srvy'
 prefix="~/Work/Curvature/testruns/CurveGSM_rg_tqf_"
-suffix="_tim1"
+suffix="_parallel_load"
 save_csv=True
 save_h5=False
 # Uncertainties for instruments
@@ -156,12 +156,17 @@ print("\n\n*** bcnt= "+str(bcnt)+"   ecnt= "+str(ecnt)+"   ***\n\n")
 TQF = np.interp(t_master, TQFarr[bcnt:ecnt,0].astype('float64'), TQFarr[bcnt:ecnt,1].astype('float64')) # interpolate to match t_master
 
 # Calculate error of curvature
-sig_b = del_b/np.multiply(bm, bmag)
+sig_b = del_b/np.multiply(bm, bmag.reshape(bmag.shape[0],1))
 bpart = np.divide(sig_b, bm)
 dpart = np.divide(sig_b, dBmin)
 rsep = np.interp(t_master, TQFarr[bcnt:ecnt,0].astype('float64'), TQFarr[bcnt:ecnt,2].astype('float64'))
-rpart = np.array([del_r/rsep, del_r/rsep, del_r/rsep])
+rpart = np.array([del_r/rsep, del_r/rsep, del_r/rsep]).transpose()
+
+print("shapes: bpart=", bpart.shape, "\ndpart=", dpart.shape, "\nrpart=", rpart.shape, "\nkvec=", curve_Harvey.shape)
+
 sig_k = np.multiply(np.sqrt(np.multiply(bpart, bpart) + np.multiply(dpart, dpart) + np.multiply(rpart, rpart)), curve_Harvey)
+
+
 
 # Calculate the magnitude of the curvature to find radius
 curve_norm = np.linalg.norm(curve_Harvey, axis=1)
