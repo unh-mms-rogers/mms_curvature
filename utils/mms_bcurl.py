@@ -189,19 +189,30 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     # Yes, this looks like a mess.
     # It also produces the desired results without resorting to a python for loop.
     # Using an intermediate numerator variable to help save memory...
-    k_num = np.transpose(np.cross(posoffset[1], posoffset[2]))
-    k[1] = np.transpose(np.multiply((1/np.diag(np.matmul(posoffset[0], k_num))), k_num))
-    k_num = np.transpose(np.cross(posoffset[0], posoffset[2]))
-    k[2] = np.transpose(np.multiply((1/np.diag(np.matmul(posoffset[1], k_num))), k_num))
-    k_num = np.transpose(np.cross(posoffset[0], posoffset[1]))
-    k[3] = np.transpose(np.multiply((1/np.diag(np.matmul(posoffset[2], k_num))), k_num))
+    ## Preserving the below version because it's moderately easier to read than the more efficient form.
+    #k_num = np.transpose(np.cross(posoffset[1], posoffset[2]))
+    #k[1] = np.transpose(np.multiply((1/np.diag(np.matmul(posoffset[0], k_num))), k_num))
+    #k_num = np.transpose(np.cross(posoffset[0], posoffset[2]))
+    #k[2] = np.transpose(np.multiply((1/np.diag(np.matmul(posoffset[1], k_num))), k_num))
+    #k_num = np.transpose(np.cross(posoffset[0], posoffset[1]))
+    #k[3] = np.transpose(np.multiply((1/np.diag(np.matmul(posoffset[2], k_num))), k_num))
+    
+    ## Much more processor and memory efficient method, using numpy's Einstein Summation function.
+    k_num = np.cross(posoffset[1], posoffset[2])
+    k[1] = np.transpose(np.multiply((1/np.einsum('ij,ij->i',posoffset[0], k_num)), np.transpose(k_num)))
+    k_num = np.cross(posoffset[0], posoffset[2])
+    k[2] = np.transpose(np.multiply((1/np.einsum('ij,ij->i',posoffset[1], k_num)), np.transpose(k_num)))
+    k_num = np.cross(posoffset[0], posoffset[1])
+    k[3] = np.transpose(np.multiply((1/np.einsum('ij,ij->i',posoffset[2], k_num)), np.transpose(k_num)))
     del k_num
     ## Per equation (14.10) of "Analysis Methods for Multi-Spacecraft Data", sum of all k_a = 0.  Skip the heavy calculations for our relative origin.
     k[0] = k[0]-(k[3]+k[2]+k[1])
 
     curlB = np.add.reduce(np.cross(k,datab))
-    divB = np.diag(np.matmul(datab[0], np.transpose(k[0]))+np.matmul(datab[1], np.transpose(k[1]))+np.matmul(datab[2], np.transpose(k[2]))+np.matmul(datab[3], np.transpose(k[3])))
-    
+    ## Replacing this with a more efficient implementation.
+    #divB = np.diag(np.matmul(datab[0], np.transpose(k[0]))+np.matmul(datab[1], np.transpose(k[1]))+np.matmul(datab[2], np.transpose(k[2]))+np.matmul(datab[3], np.transpose(k[3])))
+    divB = np.einsum('ij,ij->i',datab[0], k[0])+np.einsum('ij,ij->i',datab[1], k[1])+np.einsum('ij,ij->i',datab[2], k[2])+np.einsum('ij,ij->i',datab[3], k[3])
+
     jvec = 1e-12*curlB/m0
     jmag = np.sqrt(np.square(jvec[:,0])+np.square(jvec[:,1])+np.square(jvec[:,2]))
 
