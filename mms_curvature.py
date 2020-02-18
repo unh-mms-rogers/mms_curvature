@@ -182,15 +182,27 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # Calculate volumetric tensor (Harvey, Ch 12.4, Eq 12.23, from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.)
     
-    Rvol = np.ndarray((t_master.shape[0], 3, 3))
-    for i in range(t_master.shape[0]):
-        #rvol_step = np.zeros([3,3])    # Stepwise method gives same result as explicit below
-        #for sc in range(4):
-        #    rvol_step = rvol_step + np.outer(rarr[sc,i,:], rarr[sc,i,:])
-        ## endfor
-        #Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
-        
-        Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))     # give same result as stepwise above
+    #Rvol = np.ndarray((t_master.shape[0], 3, 3))
+    #for i in range(t_master.shape[0]):
+    #    #rvol_step = np.zeros([3,3])    # Stepwise method gives same result as explicit below
+    #    #for sc in range(4):
+    #    #    rvol_step = rvol_step + np.outer(rarr[sc,i,:], rarr[sc,i,:])
+    #    ## endfor
+    #    #Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
+    #    #Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))     # give same result as stepwise above
+
+    rmOuter = np.einsum('...i,...j->...ij',rm,rm)  # explicit form 'outer product' use of EinSum, broadcast across leading dimensions
+    rarrOuter = np.einsum('...i,...j->...ij',rarr,rarr)  # Same as line above
+
+    Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise above
+
+    ## Below are just some intermediate verifiers used to ensure the above vectorized form above worked properly.
+    #Rvol1 = (1./4.)*((np.outer(rarr[0,1,:], rarr[0,1,:]) + np.outer(rarr[1,1,:], rarr[1,1,:]) + np.outer(rarr[2,1,:], rarr[2,1,:]) + np.outer(rarr[3,1,:], rarr[3,1,:])) - rmOuter[1])     # give same result as stepwise above
+    #Rvol10 = (1./4.)*((np.outer(rarr[0,10,:], rarr[0,10,:]) + np.outer(rarr[1,10,:], rarr[1,10,:]) + np.outer(rarr[2,10,:], rarr[2,10,:]) + np.outer(rarr[3,10,:], rarr[3,10,:])) - rmOuter[10])     # give same result as stepwise above
+    #Rvol100 = (1./4.)*((np.outer(rarr[0,100,:], rarr[0,100,:]) + np.outer(rarr[1,100,:], rarr[1,100,:]) + np.outer(rarr[2,100,:], rarr[2,100,:]) + np.outer(rarr[3,100,:], rarr[3,100,:])) - rmOuter[100])     # give same result as stepwise above
+    #Rvol1_1 = (1./4.)*((rarrOuter[0][1] + rarrOuter[1][1] + rarrOuter[2][1] + rarrOuter[3][1]) - rmOuter[1])     # give same result as stepwise above
+    #Rvol10_1 = (1./4.)*((rarrOuter[0][10] + rarrOuter[1][10] + rarrOuter[2][10] + rarrOuter[3][10]) - rmOuter[10])     # give same result as stepwise above
+    #Rvol100_1 = (1./4.)*((rarrOuter[0][100] + rarrOuter[1][100] + rarrOuter[2][100] + rarrOuter[3][100]) - rmOuter[100])     # give same result as stepwise above
     
     Rinv = np.linalg.inv(Rvol)
     a_ne_b_list=[[1,2,3],[2,3],[3]]
