@@ -117,7 +117,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     #out_vars[positions[2] + '_i'] = np.interp(timeseries, positions[2]['x'], positions[2]['y'])
     #out_vars[positions[3] + '_i'] = np.interp(timeseries, positions[3]['x'], positions[3]['y'])
 
-    m0 = 4.0*math.pi*1e-7
+    m0 = 4.0*math.pi*1e-7 #  permeability of free space in SI units (H/m)
 
     ##timesb1, datab1 = get_data(fields[0])
     ##timesb2, datab2 = get_data(fields[1] + '_i')

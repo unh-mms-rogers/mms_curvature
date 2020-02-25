@@ -190,12 +190,12 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #    ## endfor
     #    #Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
     #    #Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))     # give same result as stepwise above
-
+    
     rmOuter = np.einsum('...i,...j->...ij',rm,rm)  # explicit form 'outer product' use of EinSum, broadcast across leading dimensions
     rarrOuter = np.einsum('...i,...j->...ij',rarr,rarr)  # Same as line above
-
+    
     Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise above
-
+    
     ## Below are just some intermediate verifiers used to ensure the above vectorized form above worked properly.
     #Rvol1 = (1./4.)*((np.outer(rarr[0,1,:], rarr[0,1,:]) + np.outer(rarr[1,1,:], rarr[1,1,:]) + np.outer(rarr[2,1,:], rarr[2,1,:]) + np.outer(rarr[3,1,:], rarr[3,1,:])) - rmOuter[1])     # give same result as stepwise above
     #Rvol10 = (1./4.)*((np.outer(rarr[0,10,:], rarr[0,10,:]) + np.outer(rarr[1,10,:], rarr[1,10,:]) + np.outer(rarr[2,10,:], rarr[2,10,:]) + np.outer(rarr[3,10,:], rarr[3,10,:])) - rmOuter[10])     # give same result as stepwise above
@@ -205,29 +205,94 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #Rvol100_1 = (1./4.)*((rarrOuter[0][100] + rarrOuter[1][100] + rarrOuter[2][100] + rarrOuter[3][100]) - rmOuter[100])     # give same result as stepwise above
     
     Rinv = np.linalg.inv(Rvol)
-    a_ne_b_list=[[1,2,3],[2,3],[3]]
+    #a_ne_b_list=[[1,2,3],[2,3],[3]]
 
-    grad_Harvey = np.ndarray((t_master.shape[0], 3, 3))
-    curve_Harvey = np.ndarray((t_master.shape[0], 3))    
+    #grad_Harvey = np.ndarray((t_master.shape[0], 3, 3))
+    #curve_Harvey = np.ndarray((t_master.shape[0], 3))    
     
-    for t in range(t_master.shape[0]):      # steps through each time step
-        for i in range(3):                  # for final i-component of the gradient 
-            for j in range(3):              # for final j-component of the gradient
-                dbdr = np.zeros(3)          # a != b summation row vector from Harvey.  Re-initialized as zeros for each i,j
-                for k in range(3):          # step through k-index.  May be able to eliminate this with vectorization later
-                    for a in range(3):      # step through spacecraft MMS1-3; MMS4 done implicitly
-                        for b in a_ne_b_list[a]:    # Does not contain MMS1 (done by stepping through it in previous loop); provides sc_a != sc_b summation in Harvey (12.18)
-                            dbdr[k] = dbdr[k] + ((barr[a,t,i] - barr[b,t,i]) * (rarr[a,t,k] - rarr[b,t,k]))
-                        # endfor
-                    # endfor
-                # endfor
-                # grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # Gives the same result as below
-                grad_Harvey[t,i,j] = (1./16.) * np.matmul(Rinv[t,:,j], dbdr)     # Gives the same result as below
-                #grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, np.linalg.inv(Rvol[t,:,:])[:,j])    # Maybe linalg.inv doesn't vectorize the way I think?
-            # endfor
-        # curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
-        curve_Harvey[t,:] = np.matmul(grad_Harvey[t,:,:], bm[t,:])               # Order of matmul has BIG effect!
-    # endfor
+    #for t in range(t_master.shape[0]):      # steps through each time step
+    #    for i in range(3):                  # for final i-component of the gradient 
+    #        for j in range(3):              # for final j-component of the gradient
+    #            dbdr = np.zeros(3)          # a != b summation row vector from Harvey.  Re-initialized as zeros for each i,j
+    #            for k in range(3):          # step through k-index.  May be able to eliminate this with vectorization later
+    #                for a in range(3):      # step through spacecraft MMS1-3; MMS4 done implicitly
+    #                    for b in a_ne_b_list[a]:    # Does not contain MMS1 (done by stepping through it in previous loop); provides sc_a != sc_b summation in Harvey (12.18)
+    #                        dbdr[k] = dbdr[k] + ((barr[a,t,i] - barr[b,t,i]) * (rarr[a,t,k] - rarr[b,t,k]))
+    #                    # endfor
+    #                # endfor
+    #            # endfor
+    #            # grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, Rinv[t,:,j])     # Gives the same result as below
+    #            grad_Harvey[t,i,j] = (1./16.) * np.matmul(Rinv[t,:,j], dbdr)     # Gives the same result as below
+    #            #grad_Harvey[t,i,j] = (1./16.) * np.matmul(dbdr, np.linalg.inv(Rvol[t,:,:])[:,j])    # Maybe linalg.inv doesn't vectorize the way I think?
+    #        # endfor
+    #    # curve_Harvey[t,:] = np.matmul(bm[t,:], grad_Harvey[t,:,:])               # same thing, probably just should be matrix mult.
+    #    curve_Harvey[t,:] = np.matmul(grad_Harvey[t,:,:], bm[t,:])               # Order of matmul has BIG effect!
+    ## endfor
+    
+    # Vectorized matrix operations to calculate the above.  Saves compute time at the expense of memory.
+    tmpR = np.repeat(rarr[np.newaxis,:,:,:],rarr.shape[0],axis=0)  # Stretch the array to be 2-D instead of 1-D for the sats.  Required for next operation.
+    triR = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpR,axes=(1,0,2,3)) - tmpR, -1), -1))  # This produces a triangular matrix of dR=D_a - D_b, for all [a != b]
+    
+    tmpB = np.repeat(barr[np.newaxis,:,:,:],barr.shape[0],axis=0)  # Same as above, but with B instead
+    triB = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpB,axes=(1,0,2,3)) - tmpB, -1), -1)) # Again, dB=B_a - B_b, for all [a != b]
+    
+    #Example of effect of above operations:
+    # Each b_i below is a 3-vector
+    # 
+    # Line 236 (at each timestep):
+    # tmpB = 
+    # [[b_1, b_2, b_3, b_4],
+    #  [b_1, b_2, b_3, b_4],
+    #  [b_1, b_2, b_3, b_4],
+    #  [b_1, b_2, b_3, b_4]]
+    # 
+    # Line 237, two steps, first array is intermediate form (again, at each timestep):
+    # [[b_1-b_1,  b_1-b_2,  b_1-b_3, b_1-b_4],
+    #  [b_2-b_1,  b_2-b_2,  b_2-b_3, b_2-b_4],
+    #  [b_3-b_1,  b_3-b_2,  b_3-b_3, b_3-b_4],
+    #  [b_4-b_1,  b_4-b_2,  b_4-b_3, b_4-b_4]]
+    # 
+    # triB =
+    # [[0      ,  b_1-b_2,  b_1-b_3, b_1-b_4],
+    #  [0      ,  0      ,  b_2-b_3, b_2-b_4],
+    #  [0      ,  0      ,  0      , b_3-b_4],
+    #  [0      ,  0      ,  0      , 0      ]]
+    
+    # Calculate the partial components for dbdr
+    dtemp = np.ndarray((3, t_master.shape[0], 3))
+    dtemp[0] = np.einsum('...ab,...ab',triB,triR) #This gets us the diagonals of dbdr for B_i and R_i (eg, both x components, both y, ...)
+    dtemp[1] = np.einsum('...ab,...ab',triB,np.roll(triR,-1,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+1)  (eg, B_x * R_y, ...)
+    dtemp[2] = np.einsum('...ab,...ab',triB,np.roll(triR,-2,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+2)  (eg, B_y * R_x, ...)
+    
+    # Constructs dbdr matrix for each timestep, where dbdr[i,j] will return the relavant dB_i*dR_j resultant vector
+    dbdr = np.einsum('...i,...ij->...ij',dtemp[0],np.identity(3)) + \
+            np.einsum('...i,...ij->...ij',dtemp[1],(np.roll(np.identity(3),-1,axis=0))) + \
+            np.einsum('...i,...ij->...ij',dtemp[2],(np.roll(np.identity(3),-2,axis=0)))
+    
+    # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there needs to be an simpler way to calculate this, but I haven't found it yet.
+    # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
+    tmpHarv = np.ndarray((3, t_master.shape[0], 3))
+    tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
+    tmpHarv[1] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-1,1)),np.square(numBirds))
+    tmpHarv[2] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-2,1)),np.square(numBirds))
+    
+    # Constructs the gradient matrix for each timestep from the diagonals calculated in the above steps.
+    grad_Harvey = np.transpose( \
+                  np.einsum('...i,...ij->...ij',tmpHarv[0],np.identity(3)) + \
+                  np.einsum('...i,...ij->...ij',tmpHarv[1],(np.roll(np.identity(3),-1,axis=0))) + \
+                  np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0))) \
+                  , (0,2,1)) # Due to all the matrix rolling shenanigans leading up to this, we need to transpose the matrix from each timestep.
+    curve_Harvey = np.einsum('...ij,...j', grad_Harvey, bm)
+    
+    ## List of references for how numpy.einsum operates:
+    # 
+    # Official docs on einsum (as of numpy 1.18): https://numpy.org/doc/1.18/reference/generated/numpy.einsum.html
+    # General explanation of einsum: https://stackoverflow.com/a/33641428
+    # Levi-Cevita and einsum: https://stackoverflow.com/a/20890335
+    # A specific instance of Levi-Cevita with einsum:  https://stackoverflow.com/a/20910319
+    # 
+    # 
+    
     '''
     # Solenoid correction from Harvey (12.20)
     # lm = np.ndarray((t_master.shape[0]))
@@ -243,26 +308,24 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
         sol_curve_Harvey[t,:] = np.matmul(sol_grad_Harvey[t,:,:], bm[t,:])
     '''         # Solenoid correction has little effect, which is not surprising
 
-
-    # Use barr and B* to find minimum dB along each axis
-    B_arr = [B1, B2, B3, B4]
-    dBmin = np.full((t_master.shape[0],3), np.inf)     # minimum dB for x,y,z GSM 
-    for t in range(t_master.shape[0]):          # step through the time series
-        for a in range(3):                      # a = MMS 1(0)  -> 3(2); MMS 4 done implicitly
-            for b in a_ne_b_list[a]:            # b for sc_a != sc_b to do all possible combonations
-                tmp_x = (barr[a,t,0] * B_arr[a][t]) - (barr[b,t,0] * B_arr[b][t])
-                tmp_y = (barr[a,t,1] * B_arr[a][t]) - (barr[b,t,1] * B_arr[b][t])
-                tmp_z = (barr[a,t,2] * B_arr[a][t]) - (barr[b,t,2] * B_arr[b][t])
-                if tmp_x < dBmin[t,0]: dBmin[t,0] = tmp_x
-                if tmp_y < dBmin[t,1]: dBmin[t,1] = tmp_y   # finds minimum change in B along each axis
-                if tmp_z < dBmin[t,2]: dBmin[t,2] = tmp_z
+    if report_all:
+        # Use barr and B* to find minimum dB along each axis
+        a_ne_b_list=[[1,2,3],[2,3],[3]]
+        B_arr = [B1, B2, B3, B4]
+        dBmin = np.full((t_master.shape[0],3), np.inf)     # minimum dB for x,y,z GSM 
+        for t in range(t_master.shape[0]):          # step through the time series
+            for a in range(3):                      # a = MMS 1(0)  -> 3(2); MMS 4 done implicitly
+                for b in a_ne_b_list[a]:            # b for sc_a != sc_b to do all possible combonations
+                    tmp_x = (barr[a,t,0] * B_arr[a][t]) - (barr[b,t,0] * B_arr[b][t])
+                    tmp_y = (barr[a,t,1] * B_arr[a][t]) - (barr[b,t,1] * B_arr[b][t])
+                    tmp_z = (barr[a,t,2] * B_arr[a][t]) - (barr[b,t,2] * B_arr[b][t])
+                    if tmp_x < dBmin[t,0]: dBmin[t,0] = tmp_x
+                    if tmp_y < dBmin[t,1]: dBmin[t,1] = tmp_y   # finds minimum change in B along each axis
+                    if tmp_z < dBmin[t,2]: dBmin[t,2] = tmp_z
+                #end for
             #end for
         #end for
-    #end for
 
-
-
-    if report_all:
         return (t_master, grad_Harvey, curve_Harvey, rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)  #used for troubleshooting
     else:
         return (t_master, grad_Harvey, curve_Harvey)
