@@ -1,5 +1,7 @@
 # This file adapted from cdf_to_tplot.py from the pyspedas library,
 # sourced from https://github.com/spedas/pyspedas
+# This, in turn, appears to have been sourced from the pytplot,
+# which can be found here: https://github.com/MAVENSDC/PyTplot
 #
 # All modifications copyright 2019 Tim Rogers.  All rights reserved.
 # Released under the MIT license.
@@ -25,8 +27,6 @@ import numpy as np
 
 def load_cdf(filenames, varformat=None, get_support_data=False,
                  prefix='', suffix='', center_measurement=False):
-                 #prefix='', suffix='', plot=False, merge=False,
-                 #center_measurement=False, notplot=False):
     """
     This function will load datasets and metadata from CDF files.
     .. note::
@@ -52,23 +52,14 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
         suffix: str
             The tplot variable names will be given this suffix.  By default,
             no suffix is added.
-        plot: bool
-            The data is plotted immediately after being generated.  All tplot
-            variables generated from this function will be on the same plot.
-        merge: bool
-            If True, then data from different cdf files will be merged into
-            a single pytplot variable.
         center_measurement: bool
             If True, the CDF epoch variables are time-shifted to the middle
             of the accumulation interval by their DELTA_PLUS_VAR and
             DELTA_MINUS_VAR variable attributes
-        notplot: bool
-            If True, then data are returned in a hash table instead of
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
 
     Returns:
-        List of tplot variables created (unless notplot keyword is used).
+        Tupple of dictionaries containing the variables loaded and related metadata.
+        ie.  (variables, metadata)
     """
 
     stored_variables = []

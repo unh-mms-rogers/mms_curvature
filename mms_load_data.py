@@ -62,6 +62,75 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     no_update=False, center_measurement=False, notplot=False, data_root=None):
     """
     This function loads MMS data into a dictionary by variable name.
+    
+    Parameters:
+        trange : list of str
+            time range of interest [starttime, endtime] with the format 
+            'YYYY-MM-DD','YYYY-MM-DD'] or to specify more or less than a day 
+            ['YYYY-MM-DD/hh:mm:ss','YYYY-MM-DD/hh:mm:ss']
+
+        probe : str or list of str
+            list of probes, valid values for MMS probes are ['1','2','3','4']. 
+
+        data_rate : str or list of str
+            instrument data rates for FGM include 'brst' 'fast' 'slow' 'srvy'. The
+            default is 'srvy'.
+
+        level : str
+            indicates level of data processing. the default if no level is specified is 'l2'
+
+        instrument : str or list of str
+            Name(s) of instrument(s) for which to load data.
+
+        datatype : str or list of str
+            One or more types of data to load.
+            Must be selected from this list: ['ancillary', 'hk', 'science']
+            If given as an empty string or not provided, will default to 'science' data.
+
+        descriptor : str or list of str
+            Optional name(s) of data subset(s) to load.
+
+        varformat: str
+            The file variable formats to load.  Wildcard character
+            "*" is accepted.  By default, all variables are loaded in.
+
+        prefix: str
+            The variable names will be given this prefix.  By default, 
+            no prefix is added.
+
+        suffix: str
+            The variable names will be given this suffix.  By default, 
+            no suffix is added.
+
+        get_support_data: bool
+            If True, data with an attribute "VAR_TYPE" with a value of "support_data"
+            will be loaded into data tables.  If False, only loads in data with a 
+            "VAR_TYPE" attribute of "data".  Defaults to False.
+
+        time_clip: bool
+            Data will be clipped to the exact trange specified by the trange keyword.
+
+        no_update: bool
+            If true, do not poll the upstream MMS data repository for new/updated data.
+            This will limit loading to only files already available from the local system.
+
+        center_measurement: bool
+            If True, the CDF epoch variables are time-shifted to the middle
+            of the accumulation interval by their DELTA_PLUS_VAR and
+            DELTA_MINUS_VAR variable attributes
+
+        notplot: bool
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
+
+        data_root: str
+            Full path to the root directory where MMS directory structure begins.
+            If not provided, will default to '<user_home>/data/mms'
+
+    Returns:
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
+
     """
 
     if not isinstance(probe, list): probe = [probe]

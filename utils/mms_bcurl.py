@@ -86,7 +86,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     # *********************************************************
     # Magnetic Field
     # *********************************************************
-    # interpolate the magnetic field data all onto the same timeline (MMS1):
+    # interpolate the magnetic field data all onto the same timeline:
     # should be in GSE coordinates
     ##tinterpol(fields[1], fields[0], newname=fields[1] + '_i')
     ##tinterpol(fields[2], fields[0], newname=fields[2] + '_i')
@@ -118,6 +118,9 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     #out_vars[positions[3] + '_i'] = np.interp(timeseries, positions[3]['x'], positions[3]['y'])
 
     m0 = 4.0*math.pi*1e-7 #  permeability of free space in SI units (H/m)
+
+    # Calculate barycentre for each timestep
+    barycentre = np.divide(np.add.reduce(datapos), datapos.shape[0])
 
     ##timesb1, datab1 = get_data(fields[0])
     ##timesb2, datab2 = get_data(fields[1] + '_i')
@@ -164,6 +167,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     #alphaparallel = np.zeros([len(timeseries), 1])
     #alpha = np.zeros([len(timeseries), 1])
 
+    # Calculate the positional offset of each bird, relative to mms1, for each timestep
     ## posoffset[i] == offset of mms(i+2), relative to mms1
     posoffset = np.zeros([3, len(timeseries), 3])
     for i in range(3):
@@ -177,14 +181,12 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     #k[2] = (np.transpose(np.cross(posoffset[0],posoffset[2]))*(1/np.matmul(posoffset[1], np.transpose(np.cross(posoffset[0],posoffset[2]))))).transpose()
     #k[3] = (np.transpose(np.cross(posoffset[0],posoffset[1]))*(1/np.matmul(posoffset[2], np.transpose(np.cross(posoffset[0],posoffset[1]))))).transpose()
     
-    ## Calculates the barcentre reciprical vector constants k_a, as inferred from equation (14.7) of "Analysis Methods for Multi-Spacecraft Data"
+    ## Calculates the barycentre reciprical vector constants k_a, as inferred from equation (14.7) of "Analysis Methods for Multi-Spacecraft Data"
     # k[bird] = T_(matrix_multiply( 1/array_of_scalar_denominators , T_(array_of_vector_numerators)))
     # Breakout of above (for k[1]):
     #    numerator = np.cross(posoffset[1], posoffset[2])
     #    partial_denom = np.matmul(posoffset[0], np.transpose(numerator))
     #    k[1] = np.transpose(np.multiply((1/np.diag(partial_denom)), np.transpose(numerator)))
-    #
-    #  Note to self:  numerator is only ever used by this method while transposed
     #
     # Yes, this looks like a mess.
     # It also produces the desired results without resorting to a python for loop.
@@ -208,7 +210,10 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     ## Per equation (14.10) of "Analysis Methods for Multi-Spacecraft Data", sum of all k_a = 0.  Skip the heavy calculations for our relative origin.
     k[0] = k[0]-(k[3]+k[2]+k[1])
 
+    # Per reference implementation, curlB is the sum across birds of each bird's barycentre reciprical vector cross B-vector, for each timestep
     curlB = np.add.reduce(np.cross(k,datab))
+
+    # Per reference implementation, divB is the sum across birds of the dot product for each bird's barycentre reciprical vector and B-vector, for each timestep.
     ## Replacing this with a more efficient implementation.
     #divB = np.diag(np.matmul(datab[0], np.transpose(k[0]))+np.matmul(datab[1], np.transpose(k[1]))+np.matmul(datab[2], np.transpose(k[2]))+np.matmul(datab[3], np.transpose(k[3])))
     divB = np.einsum('ij,ij->i',datab[0], k[0])+np.einsum('ij,ij->i',datab[1], k[1])+np.einsum('ij,ij->i',datab[2], k[2])+np.einsum('ij,ij->i',datab[3], k[3])
@@ -307,6 +312,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     ##store_data('alpha' + suffix, data={'x': timesb1, 'y': alpha})
     ##store_data('alphaparallel' + suffix, data={'x': timesb1, 'y': alphaparallel})
     out_vars['timeseries' + suffix ] = timeseries
+    out_vars['barcentre' + suffix ] = barycentre
     out_vars['curlB' + suffix ] = curlB
     out_vars['divB' + suffix  ] = divB
     out_vars['jvec' + suffix] = jvec

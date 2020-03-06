@@ -1,3 +1,9 @@
+# This file adapted from mms_load_data_shims.py from the pyspedas library,
+# sourced from https://github.com/spedas/pyspedas
+#
+# All modifications copyright 2019 Tim Rogers.  All rights reserved.
+# Released under the MIT license.
+
 """
 This module contains routines for loading MMS data
 
@@ -6,10 +12,8 @@ This module contains routines for loading MMS data
 
 from .mms_load_data import mms_load_data
 
-
+# The imports excluded below are from the original implementation in pyspedas.
 # Leaving these imports listed here for my reference toward future implementation.
-#from .fpi.mms_fpi_set_metadata import mms_fpi_set_metadata
-#from .hpca.mms_hpca_set_metadata import mms_hpca_set_metadata
 #from .feeps.mms_feeps_correct_energies import mms_feeps_correct_energies
 #from .feeps.mms_feeps_flat_field_corrections import mms_feeps_flat_field_corrections
 #from .feeps.mms_feeps_active_eyes import mms_feeps_active_eyes
@@ -38,7 +42,7 @@ def mms_load_fgm(
         available=False,
         notplot=False ):
     """
-    This function loads FGM data into tplot variables
+    This function loads FGM data and metadata
     
     Parameters:
         trange : list of str
@@ -68,25 +72,28 @@ def mms_load_fgm(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
 
     instrument='fgm'
 
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument, descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate,
+            level=level, instrument=instrument, descriptor=datatype, varformat=varformat, prefix=prefix,
+            suffix=suffix, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
     
     #return tvars
 
@@ -147,7 +154,7 @@ def mms_load_mec(
         available=False,
         notplot=False ):
     """
-    This function loads MEC data into tplot variables
+    This function loads MEC data and metadata
     
     Parameters:
         trange : list of str
@@ -177,24 +184,26 @@ def mms_load_mec(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
+    instrument='mec'
 
-    data,metadata = mms_load_data(trange=trange, probe=probe, data_rate=data_rate, level=level, instrument='mec',
+    data,metadata = mms_load_data(trange=trange, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update)
     return data,metadata
@@ -217,7 +226,7 @@ def mms_load_hpca(
         available=False,
         notplot=False ):
     """
-    This function loads HPCA data into tplot variables
+    This function loads HPCA data and metadata
     
     Parameters:
         trange : list of str
@@ -244,18 +253,18 @@ def mms_load_hpca(
             "VAR_TYPE" attribute of "data".  Defaults to True.
 
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         time_clip: bool
             Data will be clipped to the exact trange specified by the trange keyword.
             
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         center_measurement: bool
@@ -264,17 +273,18 @@ def mms_load_hpca(
             DELTA_MINUS_VAR variable attributes
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
 
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
+    instrument='hpca'
 
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='hpca',
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update, center_measurement=center_measurement)
     
@@ -298,7 +308,7 @@ def mms_load_fpi(
         available=False,
         notplot=False ):
     """
-    This function loads FPI data into tplot variables
+    This function loads FPI data and metadata
     
     Parameters:
         trange : list of str
@@ -330,15 +340,15 @@ def mms_load_fpi(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         center_measurement: bool
@@ -347,18 +357,19 @@ def mms_load_fpi(
             DELTA_MINUS_VAR variable attributes
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
 
 
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
+    instrument='fpi'
 
-    data,metadata = mms_load_data(trange=trange, probe=probe, data_rate=data_rate, level=level, instrument='fpi',
+    data,metadata = mms_load_data(trange=trange, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update, center_measurement=center_measurement, notplot=notplot)
     
@@ -381,7 +392,7 @@ def mms_load_scm(
         available=False,
         notplot=False ):
     """
-    This function loads SCM data into tplot variables
+    This function loads SCM data and metadata
     
     Parameters:
         trange : list of str
@@ -412,28 +423,29 @@ def mms_load_scm(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
 
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='scm',
+    instrument='scm'
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
             time_clip=time_clip, no_update=no_update)
     return data,metadata
@@ -457,7 +469,7 @@ def mms_load_feeps(
         no_flatfield_corrections=False,
         data_units=['count_rate', 'intensity'] ):
     """
-    This function loads FEEPS data into tplot variables
+    This function loads FEEPS data and metadata
     
     Parameters:
         trange : list of str
@@ -489,28 +501,29 @@ def mms_load_feeps(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
 
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
+    instrument='feeps'
     #was: tvars = ...
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='feeps',
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
             time_clip=time_clip, no_update=no_update)
 
@@ -568,6 +581,7 @@ def mms_eis_omni(
 
         data_dictionary: dict
             Dictionary of variables to operate on.
+            This dictionary will be modified by this function on success.
 
         species: str
             species for calculation (default: 'proton')
@@ -586,7 +600,7 @@ def mms_eis_omni(
 
 
     Returns:
-        Name of tplot variable created.
+        Nothing.  variable will be added directly to the input data_dictionary.
     """
     
     probe = str(probe)
@@ -639,7 +653,7 @@ def mms_load_eis(
         available=False,
         notplot=False ):
     """
-    This function loads EIS data into tplot variables
+    This function loads EIS data and metadata
     
     Parameters:
         trange : list of str
@@ -669,29 +683,30 @@ def mms_load_eis(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
+    instrument='epd-eis'
 
     from .eis.mms_eis_omni import mms_eis_omni
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='epd-eis',
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix='', suffix='',
             time_clip=time_clip, no_update=no_update)
 
@@ -725,7 +740,7 @@ def mms_load_edi(
         available=False,
         notplot=False ):
     """
-    This function loads EDI data into tplot variables
+    This function loads EDI data and metadata
     
     Parameters:
         trange : list of str
@@ -755,27 +770,28 @@ def mms_load_edi(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='edi',
+    instrument='edi'
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, time_clip=time_clip, no_update=no_update)
     return data,metadata
 
@@ -796,7 +812,7 @@ def mms_load_edp(
         available=False,
         notplot=False ):
     """
-    This function loads EDP data into tplot variables
+    This function loads EDP data and metadata
     
     Parameters:
         trange : list of str
@@ -826,27 +842,28 @@ def mms_load_edp(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='edp',
+    instrument='edp'
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
             time_clip=time_clip, no_update=no_update)
     return data,metadata
@@ -868,7 +885,7 @@ def mms_load_dsp(
         available=False,
         notplot=False ):
     """
-    This function loads DSP data into tplot variables
+    This function loads DSP data and metadata
     
     Parameters:
         trange : list of str
@@ -898,27 +915,28 @@ def mms_load_dsp(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='dsp',
+    instrument='dsp'
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
     return data,metadata
 
@@ -939,7 +957,7 @@ def mms_load_aspoc(
         available=False,
         notplot=False ):
     """
-    This function loads ASPOC data into tplot variables
+    This function loads ASPOC data and metadata
     
     Parameters:
         trange : list of str
@@ -969,27 +987,28 @@ def mms_load_aspoc(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         varformat: str
-            The file variable formats to load into tplot.  Wildcard character
+            The file variable formats to load.  Wildcard character
             "*" is accepted.  By default, all variables are loaded in.
 
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
 
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument='aspoc',
+    instrument='aspoc'
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, probe=probe, data_rate=data_rate, level=level, instrument=instrument,
             descriptor=datatype, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix,
             time_clip=time_clip, no_update=no_update)
     return data,metadata
@@ -1009,7 +1028,7 @@ def mms_load_fsm(
         varformat=None,
         notplot=False ):
     """
-    This function loads FSM data into tplot variables
+    This function loads FSM data and metadata
     
     Parameters:
         trange : list of str
@@ -1038,21 +1057,24 @@ def mms_load_fsm(
             Data will be clipped to the exact trange specified by the trange keyword.
             
         prefix: str
-            The tplot variable names will be given this prefix.  By default, 
+            The variable names will be given this prefix.  By default, 
             no prefix is added.
 
         suffix: str
-            The tplot variable names will be given this suffix.  By default, 
+            The variable names will be given this suffix.  By default, 
             no suffix is added.
 
         notplot: bool
-            If True, then data are returned in a hash table instead of 
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
+            [Deprecated] No effect.  Parameter is preserved for partial
+            compatibility with original pyspedas implementation.
             
     Returns:
-        List of tplot variables created.
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
 
     """
-    data,metadata = mms_load_data(trange=trange, notplot=notplot, varformat=varformat, probe=probe, data_rate=data_rate, level=level, instrument='fsm', descriptor=datatype, get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
+    instrument='fsm'
+    data,metadata = mms_load_data(trange=trange, notplot=notplot, varformat=varformat, probe=probe,
+            data_rate=data_rate, level=level, instrument=instrument, descriptor=datatype,
+            get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
     return data,metadata
