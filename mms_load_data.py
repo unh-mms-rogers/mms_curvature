@@ -40,17 +40,8 @@ import numpy as np
 from .load_cdf import load_cdf
 from p_tqdm import p_map
 
-#from ..spdtplot.cdf_to_tplot import cdf_to_tplot
-#from ..analysis.time_clip import time_clip as tclip
-#from pyspedas import time_double, time_string
 from dateutil.parser import parse
 from datetime import timedelta, datetime, timezone
-#from shutil import copyfileobj, copy
-#from tempfile import NamedTemporaryFile
-#from .mms_config import CONFIG
-#from .mms_get_local_files import mms_get_local_files
-#from .mms_files_in_interval import mms_files_in_interval
-#from .mms_login_lasp import mms_login_lasp
 
 from . import mms_sdc_api_client as mms_sdc_api_client
 
@@ -141,15 +132,7 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     
     probe = [('mms'+(str(p))) for p in probe]
 
-    ## allows the user to pass in trange as list of datetime objects
-    #if type(trange[0]) == datetime and type(trange[1]) == datetime:
-    #    trange = [time_string(trange[0].timestamp()), time_string(trange[1].timestamp())]
-    #    
-    #start_date = parse(trange[0]).strftime('%Y-%m-%d') # need to request full day, then parse out later
-    #end_date = parse(time_string(time_double(trange[1])-0.1)).strftime('%Y-%m-%d-%H-%M-%S') # -1 second to avoid getting data for the next day
-    
     # We're going to handle everything as datetime objects fo consistancy and easy conversion at-need.
-    
     local_trange = [None,None]
     
     if type(trange[0]) == datetime: # Already a datetime.
@@ -174,17 +157,8 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     start_date = local_trange[0].date().isoformat() # need to request full day, then parse out later
     end_date = (local_trange[1] - timedelta(seconds=1)).isoformat() # -1 second to avoid getting data for the next day
     
-    #download_only = CONFIG['download_only']
-    #
-    #no_download = False
-    #if no_update or CONFIG['no_download']: no_download = True
-    #
-    #user = None
-    #if not no_download:
-    #    sdc_session, user = mms_login_lasp()
     
     out_files = []
-    #available_files = []
     
     for dtype in datatype:
         # Default to 'science' data, as the old SPEDAS implementation assumed that and used "datatype" for something else entirely.
@@ -206,82 +180,6 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
                 logging.info('download URI: '+mms_api_client.url())
                 out_files.extend(mms_api_client.Download())
 
-    #for prb in probe:
-    #    for drate in data_rate:
-    #        for lvl in level:
-    #            for dtype in datatype:
-    #                if user is None:
-    #                    url = 'https://lasp.colorado.edu/mms/sdc/public/files/api/v1/file_info/science?start_date=' + start_date + '&end_date=' + end_date + '&sc_id=mms' + prb + '&instrument_id=' + instrument + '&data_rate_mode=' + drate + '&data_level=' + lvl
-    #                else:
-    #                    url = 'https://lasp.colorado.edu/mms/sdc/sitl/files/api/v1/file_info/science?start_date=' + start_date + '&end_date=' + end_date + '&sc_id=mms' + prb + '&instrument_id=' + instrument + '&data_rate_mode=' + drate + '&data_level=' + lvl
-    #                
-    #                if dtype != '':
-    #                    url = url + '&descriptor=' + dtype
-    #
-    #                if CONFIG['debug_mode']: logging.info('Fetching: ' + url)
-    #
-    #                if no_download == False:
-    #                    # query list of available files
-    #                    try:
-    #                        http_json = sdc_session.get(url, verify=True).json()
-    #
-    #                        if CONFIG['debug_mode']: logging.info('Filtering the results down to your trange')
-    #
-    #                        files_in_interval = mms_files_in_interval(http_json['files'], trange)
-    #
-    #                        for file in files_in_interval:
-    #                            file_date = parse(file['timetag'])
-    #                            if dtype == '':
-    #                                out_dir = os.sep.join([CONFIG['local_data_dir'], 'mms'+prb, instrument, drate, lvl, file_date.strftime('%Y'), file_date.strftime('%m')])
-    #                            else:
-    #                                out_dir = os.sep.join([CONFIG['local_data_dir'], 'mms'+prb, instrument, drate, lvl, dtype, file_date.strftime('%Y'), file_date.strftime('%m')])
-    #
-    #                            if drate.lower() == 'brst':
-    #                                out_dir = os.sep.join([out_dir, file_date.strftime('%d')])
-    #
-    #                            out_file = os.sep.join([out_dir, file['file_name']])
-    #
-    #                            if CONFIG['debug_mode']: logging.info('File: ' + file['file_name'] + ' / ' + file['timetag'])
-    #
-    #                            if os.path.exists(out_file) and str(os.stat(out_file).st_size) == str(file['file_size']):
-    #                                if not download_only: logging.info('Loading ' + out_file)
-    #                                out_files.append(out_file)
-    #                                continue
-    #
-    #                            if user is None:
-    #                                download_url = 'https://lasp.colorado.edu/mms/sdc/public/files/api/v1/download/science?file=' + file['file_name']
-    #                            else:
-    #                                download_url = 'https://lasp.colorado.edu/mms/sdc/sitl/files/api/v1/download/science?file=' + file['file_name']
-    #
-    #                            logging.info('Downloading ' + file['file_name'] + ' to ' + out_dir)
-    #
-    #                            fsrc = sdc_session.get(download_url, stream=True, verify=True)
-    #                            ftmp = NamedTemporaryFile(delete=False)
-    #
-    #                            with open(ftmp.name, 'wb') as f:
-    #                                copyfileobj(fsrc.raw, f)
-    #
-    #                            if not os.path.exists(out_dir):
-    #                                os.makedirs(out_dir)
-    #
-    #                            # if the download was successful, copy to data directory
-    #                            copy(ftmp.name, out_file)
-    #                            out_files.append(out_file)
-    #                            fsrc.close()
-    #                            ftmp.close()
-    #                    except requests.exceptions.ConnectionError:
-    #                        # No/bad internet connection; try loading the files locally
-    #                        logging.error('No internet connection!')
-    #
-    #                
-    #                if out_files == []:
-    #                    if not download_only: logging.info('Searching for local files...')
-    #                    out_files = mms_get_local_files(prb, instrument, drate, lvl, dtype, trange)
-    #
-    #if not no_download:
-    #    sdc_session.close()
-    #
-    #if not download_only:
     out_files = sorted(out_files)
     
     #Because we're not using pytplot, new_variables is a simple dictionary containing the data.
@@ -290,15 +188,16 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     #    current:  new_variables[Varname].values()
     #new_variables,new_metadata = load_cdf(out_files, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement)
     
-    ##alt:
     new_variables = {}
     new_metadata = {}
     
     logging.info('Beginning parallel load of '+str(len(out_files))+' data files...')
     
+    # This attempts to load all requested cdf files into memory concurrently, using as many threads as the system permits.
+    # The load_cdf function returns a tuple of (data, metadata), so pile_o_data will be a list of these tuples.
     pile_o_data = p_map(load_cdf, out_files, varformat, get_support_data, prefix, suffix, center_measurement)
 
-    ########### Do merge
+    # Merge matching variable names across loaded files.
     logging.info('Stitching together the data...')
     for data,metadata in pile_o_data:
         # merge data dictionary
@@ -419,6 +318,4 @@ def mms_data_time_clip(data_dict, start_time, end_time):
                     dataset[axis] = dataset[axis][start_index:end_index]
             #else: It's neither.  no-op
 
-    # Dictionary was directly altered.  Removing the return value as redundant.
-    ## Return the updated data dictionary
-    ##return data_dict
+    # Dictionary was directly altered.  No value directly returned.

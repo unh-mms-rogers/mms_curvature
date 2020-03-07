@@ -88,84 +88,26 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     # *********************************************************
     # interpolate the magnetic field data all onto the same timeline:
     # should be in GSE coordinates
-    ##tinterpol(fields[1], fields[0], newname=fields[1] + '_i')
-    ##tinterpol(fields[2], fields[0], newname=fields[2] + '_i')
-    ##tinterpol(fields[3], fields[0], newname=fields[3] + '_i')
     datab = np.ndarray((4,timeseries.shape[0],3))
     for bird in range(4):
         datab[bird,:,0] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,0])
         datab[bird,:,1] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,1])
         datab[bird,:,2] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,2])
-    #out_vars[fields[0] + '_i'] = np.interp(timeseries, fields[0]['x'], fields[0]['y'])
-    #out_vars[fields[1] + '_i'] = np.interp(timeseries, fields[1]['x'], fields[1]['y'])
-    #out_vars[fields[2] + '_i'] = np.interp(timeseries, fields[2]['x'], fields[2]['y'])
-    #out_vars[fields[3] + '_i'] = np.interp(timeseries, fields[3]['x'], fields[3]['y'])
 
     # interpolate the definitive ephemeris onto the magnetic field timeseries
     # should be in GSE coordinates
-    ##tinterpol(positions[0], fields[0], newname=positions[0] + '_i')
-    ##tinterpol(positions[1], fields[0], newname=positions[1] + '_i')
-    ##tinterpol(positions[2], fields[0], newname=positions[2] + '_i')
-    ##tinterpol(positions[3], fields[0], newname=positions[3] + '_i')
     datapos = np.ndarray((4,timeseries.shape[0],3))
     for bird in range(4):
         datapos[bird,:,0] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,0])
         datapos[bird,:,1] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,1])
         datapos[bird,:,2] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,2])
-    #out_vars[positions[0] + '_i'] = np.interp(timeseries, positions[0]['x'], positions[0]['y'])
-    #out_vars[positions[1] + '_i'] = np.interp(timeseries, positions[1]['x'], positions[1]['y'])
-    #out_vars[positions[2] + '_i'] = np.interp(timeseries, positions[2]['x'], positions[2]['y'])
-    #out_vars[positions[3] + '_i'] = np.interp(timeseries, positions[3]['x'], positions[3]['y'])
 
     m0 = 4.0*math.pi*1e-7 #  permeability of free space in SI units (H/m)
 
     # Calculate barycentre for each timestep
     barycentre = np.divide(np.add.reduce(datapos), datapos.shape[0])
 
-    ##timesb1, datab1 = get_data(fields[0])
-    ##timesb2, datab2 = get_data(fields[1] + '_i')
-    ##timesb3, datab3 = get_data(fields[2] + '_i')
-    ##timesb4, datab4 = get_data(fields[3] + '_i')
-    #datab1 = out_vars[fields[0] + '_i']
-    #datab2 = out_vars[fields[1] + '_i']
-    #datab3 = out_vars[fields[2] + '_i']
-    #datab4 = out_vars[fields[3] + '_i']
 
-    # extract the vector
-    #b1 = datab[0][:, 0:3]
-    #b2 = datab[1][:, 0:3]
-    #b3 = datab[2][:, 0:3]
-    #b4 = datab[3][:, 0:3]
-
-    ##timesp1, p1 = get_data(positions[0] + '_i')
-    ##timesp2, p2 = get_data(positions[1] + '_i')
-    ##timesp3, p3 = get_data(positions[2] + '_i')
-    ##timesp4, p4 = get_data(positions[3] + '_i')
-    #p1 = datapos[0]
-    #p2 = datapos[1]
-    #p3 = datapos[2]
-    #p4 = datapos[3]
-    #p1 = out_vars[positions[0] + '_i']
-    #p2 = out_vars[positions[1] + '_i']
-    #p3 = out_vars[positions[2] + '_i']
-    #p4 = out_vars[positions[3] + '_i']
-
-    #divB = np.zeros([len(timeseries)])
-    #curlB = np.zeros([len(timeseries), 3])
-    #baryb = np.zeros([len(timeseries), 3])
-    #baryb2 = np.zeros([len(timeseries), 3])
-    #baryb3 = np.zeros([len(timeseries), 3])
-    #baryb4 = np.zeros([len(timeseries), 3])
-    #sampleb = np.zeros([len(timeseries), 3])
-
-    #jtotal = np.zeros([len(timeseries), 4])
-    #jtotal = np.zeros([len(timeseries), 3])
-    #btotal = np.zeros([len(timeseries), 1])
-    #jparallel = np.zeros([len(timeseries), 1])
-    #jperpvec = np.zeros([len(timeseries), 4])
-    #jperp = np.zeros([len(timeseries), 1])
-    #alphaparallel = np.zeros([len(timeseries), 1])
-    #alpha = np.zeros([len(timeseries), 1])
 
     # Calculate the positional offset of each bird, relative to mms1, for each timestep
     ## posoffset[i] == offset of mms(i+2), relative to mms1
@@ -175,11 +117,6 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     
     
     k = np.zeros([4,len(timeseries),3])
-    
-    ## Don't do this.  This gave bad results and occasionally crashed python...
-    #k[1] = (np.transpose(np.cross(posoffset[1],posoffset[2]))*(1/np.matmul(posoffset[0], np.transpose(np.cross(posoffset[1],posoffset[2]))))).transpose()
-    #k[2] = (np.transpose(np.cross(posoffset[0],posoffset[2]))*(1/np.matmul(posoffset[1], np.transpose(np.cross(posoffset[0],posoffset[2]))))).transpose()
-    #k[3] = (np.transpose(np.cross(posoffset[0],posoffset[1]))*(1/np.matmul(posoffset[2], np.transpose(np.cross(posoffset[0],posoffset[1]))))).transpose()
     
     ## Calculates the barycentre reciprical vector constants k_a, as inferred from equation (14.7) of "Analysis Methods for Multi-Spacecraft Data"
     # k[bird] = T_(matrix_multiply( 1/array_of_scalar_denominators , T_(array_of_vector_numerators)))
@@ -215,102 +152,13 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
 
     # Per reference implementation, divB is the sum across birds of the dot product for each bird's barycentre reciprical vector and B-vector, for each timestep.
     ## Replacing this with a more efficient implementation.
-    #divB = np.diag(np.matmul(datab[0], np.transpose(k[0]))+np.matmul(datab[1], np.transpose(k[1]))+np.matmul(datab[2], np.transpose(k[2]))+np.matmul(datab[3], np.transpose(k[3])))
     divB = np.einsum('ij,ij->i',datab[0], k[0])+np.einsum('ij,ij->i',datab[1], k[1])+np.einsum('ij,ij->i',datab[2], k[2])+np.einsum('ij,ij->i',datab[3], k[3])
 
     jvec = 1e-12*curlB/m0
     jmag = np.sqrt(np.square(jvec[:,0])+np.square(jvec[:,1])+np.square(jvec[:,2]))
 
 
-    # leave as a loop for now because you have to construct and manipulate a matrix for each time step.
-    ### Tim:  Nevermind.  Don't need the loop anymore for the reduced calculations we're doing.
-    ###       May need a loop back if we reinstate some of the other outputs.  Will need to look at vectorization of those if/when needed.
-    #for i, time in enumerate(timeseries):
-    #    # position of birds, relative to mms1
-    #    p12 = p2[i, 0:3]-p1[i, 0:3]
-    #    p13 = p3[i, 0:3]-p1[i, 0:3]
-    #    p14 = p4[i, 0:3]-p1[i, 0:3]
-    #
-    #    
-    #    # Calculates the barcentre reciprical vector constants k_a, as inferred from equation (14.7) of "Analysis Methods for Multi-Spacecraft Data"
-    #    k2 = np.cross(p13, p14)*(1/(np.matmul(p12, np.transpose(np.cross(p13, p14)))))
-    #    k3 = np.cross(p12, p14)*(1/(np.matmul(p13, np.transpose(np.cross(p12, p14)))))
-    #    k4 = np.cross(p12, p13)*(1/(np.matmul(p14, np.transpose(np.cross(p12, p13)))))
-    #
-    #    # Per equation (14.10) of "Analysis Methods for Multi-Spacecraft Data", sum of all k_a = 0.  Skip the heavy calculations for our relative origin.
-    #    k1 = 0-(k4+k3+k2)
-    #    ###############
-    #
-    #    curlB[i] = np.cross(k1, b1[i, :])+np.cross(k2, b2[i, :])+np.cross(k3, b3[i, :])+np.cross(k4, b4[i, :])
-    #    divB[i] = np.matmul(b1[i, :], k1) + np.matmul(b2[i, :], k2) + np.matmul(b3[i, :], k3) + np.matmul(b4[i, :], k4)
-    #
-    #    #gradbx = b1[i, 0]*k1 + b2[i, 0]*k2 + b3[i, 0]*k3 + b4[i, 0]*k4
-    #    #gradby = b1[i, 1]*k1 + b2[i, 1]*k2 + b3[i, 1]*k3 + b4[i, 1]*k4
-    #    #gradbz = b1[i, 2]*k1 + b2[i, 2]*k2 + b3[i, 2]*k3 + b4[i, 2]*k4
-    #
-    #    #barycentre = (p1[i, 0:3] + p2[i, 0:3] + p3[i, 0:3] + p4[i, 0:3])/4.0
-    #
-    #    ## and here is the field at the barycentre (calculate 4 ways)
-    #    #baryb[i, 0] = b1[i, 0] + np.sum(gradbx*(barycentre-p1[i, 0:3]))
-    #    #baryb[i, 1] = b1[i, 1] + np.sum(gradby*(barycentre-p1[i, 0:3]))
-    #    #baryb[i, 2] = b1[i, 2] + np.sum(gradbz*(barycentre-p1[i, 0:3]))
-    #
-    #    #baryb2[i, 0] = b2[i, 0] + np.sum(gradbx*(barycentre-p2[i, 0:3]))
-    #    #baryb2[i, 1] = b2[i, 1] + np.sum(gradby*(barycentre-p2[i, 0:3]))
-    #    #baryb2[i, 2] = b2[i, 2] + np.sum(gradbz*(barycentre-p2[i, 0:3]))
-    #
-    #    #baryb3[i, 0] = b3[i, 0] + np.sum(gradbx*(barycentre-p3[i, 0:3]))
-    #    #baryb3[i, 1] = b3[i, 1] + np.sum(gradby*(barycentre-p3[i, 0:3]))
-    #    #baryb3[i, 2] = b3[i, 2] + np.sum(gradbz*(barycentre-p3[i, 0:3]))
-    #
-    #    #baryb4[i, 0] = b4[i, 0] + np.sum(gradbx*(barycentre-p4[i, 0:3]))
-    #    #baryb4[i, 1] = b4[i, 1] + np.sum(gradby*(barycentre-p4[i, 0:3]))
-    #    #baryb4[i, 2] = b4[i, 2] + np.sum(gradbz*(barycentre-p4[i, 0:3]))
-    #
-    #    # (these above all agree so this is the magnetic field at the barycentre)
-    #    #divb[i, 0] = time
-    #    #divb[i, 1] = divergence
-    #    #divb[i, 2] = curlmag[0]
-    #    #divb[i, 3] = curlmag[1]
-    #    #divb[i, 4] = curlmag[2]
-    #
-    #    # the cross product of the calculated curl and the sample field times 1e-21 (SI), divided by m0
-    #
-    #    # curl is in nT/km, nT/km*1e-12 = T/m
-    #    # field is in nT, nT*1e-9 = T
-    #    # j is curl B / m0 (curl B = m0*j)
-    #    # use the magnetic field at the barycentre
-    #
-    #    # compute the current components and total specifically
-    #    #jtotal[i, 0:3] = 1e-12*divb[i, 2:5]/m0
-    #    jtotal[i] = 1e-12*curlB[i]/m0
-    #    #jtotal[i, 3] = np.sqrt(jtotal[i, 0]**2+jtotal[i, 1]**2+jtotal[i, 2]**2)
-    #
-    #    ## compute the parallel and perpendicular components of the current
-    #    #btotal = np.sqrt(np.dot(baryb[i, 0:3], baryb[i, 0:3]))
-    #
-    #    ## parallel is J.B/|B|
-    #    #jparallel[i] = np.dot(jtotal[i, 0:3], baryb[i, 0:3])/btotal
-    #    #jparallel[i] = jparallel[i][0]
-    #
-    #    ## perp is J - J// B/|B| (components and total perpendicular current)
-    #    #jperpvec[i, 0:3] = jtotal[i, 0:3] - (jparallel[i]*baryb[i, 0:3])/btotal
-    #    #jperpvec[i, 3] = np.sqrt(jperpvec[i, 0]**2 + jperpvec[i, 1]**2 + jperpvec[i, 2]**2)
-    #
-    #    ## alpha parameter
-    #    #alphaparallel[i] = np.abs(jparallel[i])/(1e-9*btotal)
-    #    #alpha[i] = np.abs(jtotal[i, 3])/(1e-9*btotal)
-
-
     # create the output variables
-    ##store_data('baryb' + suffix, data={'x': timesb1, 'y': baryb})
-    ##store_data('curlB' + suffix, data={'x': timesb1, 'y': divb[:, 2:5]})
-    ##store_data('divB' + suffix, data={'x': timesb1, 'y': divb[:, 1]})
-    ##store_data('jtotal' + suffix, data={'x': timesb1, 'y': jtotal[:, 0:3]})
-    ##store_data('jpar' + suffix, data={'x': timesb1, 'y': jparallel})
-    ##store_data('jperp' + suffix, data={'x': timesb1, 'y': jperpvec[:, 0:3]})
-    ##store_data('alpha' + suffix, data={'x': timesb1, 'y': alpha})
-    ##store_data('alphaparallel' + suffix, data={'x': timesb1, 'y': alphaparallel})
     out_vars['timeseries' + suffix ] = timeseries
     out_vars['barcentre' + suffix ] = barycentre
     out_vars['curlB' + suffix ] = curlB
@@ -318,9 +166,8 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     out_vars['jvec' + suffix] = jvec
     out_vars['jmag' + suffix] = jmag
 
-    # Ignoring 'options' because they're specific to tplot an not used in this module rewrite.
+    # Preserving old 'options' below, mostly as a reference for units.  Just in case.
     #
-    ## set some options
     #options('baryb' + suffix, 'ytitle', 'baryb [nT]')
     #options('divB' + suffix, 'ytitle', 'div(B) [nT/km]')
     #options('curlB' + suffix, 'ytitle', 'curl(B) [nT/km]')
@@ -334,5 +181,4 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     #options('jperp' + suffix, 'legend_names', ['Jperpx', 'Jperpy', 'Jperpz'])
     #options('jpar' + suffix, 'ytitle', 'Jparallel [A/m^2]')
 
-    #return ['baryb', 'curlB', 'divB', 'jtotal', 'jpar', 'jperp', 'alpha', 'alphaparallel']
     return out_vars

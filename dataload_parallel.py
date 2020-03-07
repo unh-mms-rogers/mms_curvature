@@ -36,17 +36,3 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
                     "fgm": fgm_metadata
                 }
     }
-   
-    # Old returns from this function.  Left in for future reference.
-    
-    # extract data from tplot variables to numpy arrays.  NOTE: all done in GSM.
-    postime1, pos1 = mec_data['mms1_mec_r_gsm'].values()
-    postime2, pos2 = mec_data['mms2_mec_r_gsm'].values()
-    postime3, pos3 = mec_data['mms3_mec_r_gsm'].values()
-    postime4, pos4 = mec_data['mms4_mec_r_gsm'].values()
-    magtime1, mag1 = fgm_data['mms1_fgm_b_gsm_'+data_rate+'_l2'].values()
-    magtime2, mag2 = fgm_data['mms2_fgm_b_gsm_'+data_rate+'_l2'].values()
-    magtime3, mag3 = fgm_data['mms3_fgm_b_gsm_'+data_rate+'_l2'].values()
-    magtime4, mag4 = fgm_data['mms4_fgm_b_gsm_'+data_rate+'_l2'].values()
-    # return all arrays
-    return (postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4)
