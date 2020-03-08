@@ -3,6 +3,8 @@ import logging
 
 def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', level='l2'):
     '''
+    This function displays example usage of the data load methods found in mms_load_data_shims.py
+    
     Loads all data needed for calculating magnnetic field curvature from MMS FGM data.  
     Uses a modified pymms for accessing the SDC API, file downloading, and file version control
     Uses a modified load_cdf from pyspedas for CDF unpacking.
@@ -23,6 +25,7 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
     mec_data,mec_metadata = shims.mms_load_mec(trange=trange, probe=['1', '2', '3', '4'], data_rate='srvy', level=level, time_clip=True)
     fgm_data,fgm_metadata = shims.mms_load_fgm(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, level=level, time_clip=True)
     logging.info('Returning from parallel DataLoad.')
+    # This  is just a convenient structure for returning the imported data.
     return {
         "data": {
                     "mec": mec_data,
@@ -33,17 +36,3 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
                     "fgm": fgm_metadata
                 }
     }
-   
-    # Old returns from this function.  Left in for future reference.
-    
-    # extract data from tplot variables to numpy arrays.  NOTE: all done in GSM.
-    postime1, pos1 = mec_data['mms1_mec_r_gsm'].values()
-    postime2, pos2 = mec_data['mms2_mec_r_gsm'].values()
-    postime3, pos3 = mec_data['mms3_mec_r_gsm'].values()
-    postime4, pos4 = mec_data['mms4_mec_r_gsm'].values()
-    magtime1, mag1 = fgm_data['mms1_fgm_b_gsm_'+data_rate+'_l2'].values()
-    magtime2, mag2 = fgm_data['mms2_fgm_b_gsm_'+data_rate+'_l2'].values()
-    magtime3, mag3 = fgm_data['mms3_fgm_b_gsm_'+data_rate+'_l2'].values()
-    magtime4, mag4 = fgm_data['mms4_fgm_b_gsm_'+data_rate+'_l2'].values()
-    # return all arrays
-    return (postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4)

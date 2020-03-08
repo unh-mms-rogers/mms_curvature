@@ -7,11 +7,7 @@
 import glob
 import os
 import requests
-# import multiprocessing
-# import p_tqdm
 from p_tqdm import p_map
-# import pdb # https://pythonconquerstheuniverse.wordpress.com/2009/09/10/debugging-in-python/
-# from tqdm import tqdm
 import datetime as dt
 from urllib.parse import parse_qs
 from . import mms_utils

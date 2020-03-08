@@ -38,13 +38,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     '''
     
     # normalize magnetic fields
-#    bn1 = mag1[:,0:3]/np.linalg.norm(mag1[:,0:3], ord=2, axis=1, keepdims=True)
-#    bn2 = mag2[:,0:3]/np.linalg.norm(mag2[:,0:3], ord=2, axis=1, keepdims=True)
-#    bn3 = mag3[:,0:3]/np.linalg.norm(mag3[:,0:3], ord=2, axis=1, keepdims=True)
-#    bn4 = mag4[:,0:3]/np.linalg.norm(mag4[:,0:3], ord=2, axis=1, keepdims=True)
-
-
-
     bn1 = mag1[:,0:3]/mag1[:,3,np.newaxis]
     bn2 = mag2[:,0:3]/mag2[:,3,np.newaxis]
     bn3 = mag3[:,0:3]/mag3[:,3,np.newaxis]
@@ -71,6 +64,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
         t_master = magtime4[0:(tend_i+1)]
     
     # master mag field data arr, with interpolated values
+    # Magnetic field data, interpolated to the previously determined master time sequence
     barr=np.ndarray((4,t_master.shape[0],3))
     
     barr[0,:,0] = np.interp(t_master, magtime1, bn1[:,0]) # MMS1
@@ -99,7 +93,8 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
 
 
 
-    # The below now done using time_clip=True in DataLoad
+    # The below code is preseved in case a future need calls for timesteps to by trimmed
+    #  in this function instead of during data load of input for this function.
     '''
     # need to clear extranious data points from positional data for
     #   np.interp to work as intended.
@@ -133,6 +128,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     ''' 
     
     # master position data array, with interpolated value
+    # Spacecraft position data, interpolated to the previously determined master time sequence
     rarr = np.ndarray((4,t_master.shape[0],3))
     
     rarr[0,:,0] = np.interp(t_master, postime1, pos1[:,0]) # MMS1
@@ -153,6 +149,8 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # Now all magnetic fields and positional data of of the same cadence and at the same times for each index
     # Indices are: [s/c(0=mms1, 1=mms2, 2=mms3, 3=mms4), time_step, vector(0=x, 1=y, 2=z)]
+    # ie.  rarr[<spacecraft>, <timestep_index>, <cartesian_component_of_vector>]
+    # eg.  Y-position of mms4 at first time step:  rarr[3,0,1]
     
     # calculate position and normalized magnetic field at mesocenter of the fleet
     
@@ -191,25 +189,26 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #    #Rvol[i,:,:] = (1./4.) * (rvol_step - np.outer(rm[i,:], rm[i,:]))
     #    #Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))     # give same result as stepwise above
     
+    # Intermediate variable to hold the self-outer-product of rm at each timestep
     rmOuter = np.einsum('...i,...j->...ij',rm,rm)  # explicit form 'outer product' use of EinSum, broadcast across leading dimensions
+    
+    # Intermediate variable to hold the self-outer-product of rarr, per bird, at each timestep
     rarrOuter = np.einsum('...i,...j->...ij',rarr,rarr)  # Same as line above
     
-    Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise above
+    Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise Rvol code commented out above.
+    # Brief description of operations in above line:
+    #  All of the following occur for each timestep...
+    #  1)  Collapse the self-outer-products of rarr by summing across all spacecraft
+    #  2)  From above result, subtract the self-outer-product of rm (position of mesocenter)
+    #  3)  Divide resultant array from above step by the number of spacecraft
     
-    ## Below are just some intermediate verifiers used to ensure the above vectorized form above worked properly.
-    #Rvol1 = (1./4.)*((np.outer(rarr[0,1,:], rarr[0,1,:]) + np.outer(rarr[1,1,:], rarr[1,1,:]) + np.outer(rarr[2,1,:], rarr[2,1,:]) + np.outer(rarr[3,1,:], rarr[3,1,:])) - rmOuter[1])     # give same result as stepwise above
-    #Rvol10 = (1./4.)*((np.outer(rarr[0,10,:], rarr[0,10,:]) + np.outer(rarr[1,10,:], rarr[1,10,:]) + np.outer(rarr[2,10,:], rarr[2,10,:]) + np.outer(rarr[3,10,:], rarr[3,10,:])) - rmOuter[10])     # give same result as stepwise above
-    #Rvol100 = (1./4.)*((np.outer(rarr[0,100,:], rarr[0,100,:]) + np.outer(rarr[1,100,:], rarr[1,100,:]) + np.outer(rarr[2,100,:], rarr[2,100,:]) + np.outer(rarr[3,100,:], rarr[3,100,:])) - rmOuter[100])     # give same result as stepwise above
-    #Rvol1_1 = (1./4.)*((rarrOuter[0][1] + rarrOuter[1][1] + rarrOuter[2][1] + rarrOuter[3][1]) - rmOuter[1])     # give same result as stepwise above
-    #Rvol10_1 = (1./4.)*((rarrOuter[0][10] + rarrOuter[1][10] + rarrOuter[2][10] + rarrOuter[3][10]) - rmOuter[10])     # give same result as stepwise above
-    #Rvol100_1 = (1./4.)*((rarrOuter[0][100] + rarrOuter[1][100] + rarrOuter[2][100] + rarrOuter[3][100]) - rmOuter[100])     # give same result as stepwise above
-    
+    # Pre-calculate the inverse array of Rvol here to avoid needless recalculation later.
     Rinv = np.linalg.inv(Rvol)
+    
+    # Stepwise calculation of gradient and curvature using the Harvey method
     #a_ne_b_list=[[1,2,3],[2,3],[3]]
-
     #grad_Harvey = np.ndarray((t_master.shape[0], 3, 3))
     #curve_Harvey = np.ndarray((t_master.shape[0], 3))    
-    
     #for t in range(t_master.shape[0]):      # steps through each time step
     #    for i in range(3):                  # for final i-component of the gradient 
     #        for j in range(3):              # for final j-component of the gradient
@@ -229,7 +228,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #    curve_Harvey[t,:] = np.matmul(grad_Harvey[t,:,:], bm[t,:])               # Order of matmul has BIG effect!
     ## endfor
     
-    # Vectorized matrix operations to calculate the above.  Saves compute time at the expense of memory.
+    # Vectorized matrix operations to calculate the above.  Saves a lot of compute time at the expense of a little memory.
     tmpR = np.repeat(rarr[np.newaxis,:,:,:],rarr.shape[0],axis=0)  # Stretch the array to be 2-D instead of 1-D for the sats.  Required for next operation.
     triR = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpR,axes=(1,0,2,3)) - tmpR, -1), -1))  # This produces a triangular matrix of dR=D_a - D_b, for all [a != b]
     
@@ -239,14 +238,14 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #Example of effect of above operations:
     # Each b_i below is a 3-vector
     # 
-    # Line 236 (at each timestep):
+    # Line 249 (at each timestep):
     # tmpB = 
     # [[b_1, b_2, b_3, b_4],
     #  [b_1, b_2, b_3, b_4],
     #  [b_1, b_2, b_3, b_4],
     #  [b_1, b_2, b_3, b_4]]
     # 
-    # Line 237, two steps, first array is intermediate form (again, at each timestep):
+    # Line 250, two steps, first array is intermediate form (again, at each timestep):
     # [[b_1-b_1,  b_1-b_2,  b_1-b_3, b_1-b_4],
     #  [b_2-b_1,  b_2-b_2,  b_2-b_3, b_2-b_4],
     #  [b_3-b_1,  b_3-b_2,  b_3-b_3, b_3-b_4],
@@ -269,7 +268,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
             np.einsum('...i,...ij->...ij',dtemp[1],(np.roll(np.identity(3),-1,axis=0))) + \
             np.einsum('...i,...ij->...ij',dtemp[2],(np.roll(np.identity(3),-2,axis=0)))
     
-    # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there needs to be an simpler way to calculate this, but I haven't found it yet.
+    # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there's some simpler way to calculate this, but I haven't found it yet.
     # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
     tmpHarv = np.ndarray((3, t_master.shape[0], 3))
     tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
@@ -282,6 +281,10 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
                   np.einsum('...i,...ij->...ij',tmpHarv[1],(np.roll(np.identity(3),-1,axis=0))) + \
                   np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0))) \
                   , (0,2,1)) # Due to all the matrix rolling shenanigans leading up to this, we need to transpose the matrix from each timestep.
+
+    # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
+    # The below gives identical results as, but is much more efficient than: 
+    #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])
     curve_Harvey = np.einsum('...ij,...j', grad_Harvey, bm)
     
     ## List of references for how numpy.einsum operates:
@@ -290,9 +293,9 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     # General explanation of einsum: https://stackoverflow.com/a/33641428
     # Levi-Cevita and einsum: https://stackoverflow.com/a/20890335
     # A specific instance of Levi-Cevita with einsum:  https://stackoverflow.com/a/20910319
-    # 
-    # 
     
+    # Solenoid correction was implented then removed due to negligable impact on results.
+    # Original stepwise code for solenoid correction is preseved in the below string in case of future need.
     '''
     # Solenoid correction from Harvey (12.20)
     # lm = np.ndarray((t_master.shape[0]))

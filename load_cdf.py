@@ -1,5 +1,7 @@
 # This file adapted from cdf_to_tplot.py from the pyspedas library,
 # sourced from https://github.com/spedas/pyspedas
+# This, in turn, appears to have been sourced from the pytplot,
+# which can be found here: https://github.com/MAVENSDC/PyTplot
 #
 # All modifications copyright 2019 Tim Rogers.  All rights reserved.
 # Released under the MIT license.
@@ -25,8 +27,6 @@ import numpy as np
 
 def load_cdf(filenames, varformat=None, get_support_data=False,
                  prefix='', suffix='', center_measurement=False):
-                 #prefix='', suffix='', plot=False, merge=False,
-                 #center_measurement=False, notplot=False):
     """
     This function will load datasets and metadata from CDF files.
     .. note::
@@ -52,31 +52,19 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
         suffix: str
             The tplot variable names will be given this suffix.  By default,
             no suffix is added.
-        plot: bool
-            The data is plotted immediately after being generated.  All tplot
-            variables generated from this function will be on the same plot.
-        merge: bool
-            If True, then data from different cdf files will be merged into
-            a single pytplot variable.
         center_measurement: bool
             If True, the CDF epoch variables are time-shifted to the middle
             of the accumulation interval by their DELTA_PLUS_VAR and
             DELTA_MINUS_VAR variable attributes
-        notplot: bool
-            If True, then data are returned in a hash table instead of
-            being stored in tplot variables (useful for debugging, and
-            access to multi-dimensional data products)
 
     Returns:
-        List of tplot variables created (unless notplot keyword is used).
+        Tupple of dictionaries containing the variables loaded and related metadata.
+        ie.  (variables, metadata)
     """
 
-    stored_variables = []
     epoch_cache = {}
     output_table = {}
     metadata = {}
-
-    #//global data_quants
 
     if isinstance(filenames, str):
         filenames = [filenames]
@@ -84,7 +72,7 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
         filenames = filenames
     else:
         print("Invalid filenames input.")
-        return stored_variables
+        return (output_table, metadata)  # These will be empty a dictionaries at this time.
 
     var_type = ['data']
     if varformat is None:
@@ -92,7 +80,7 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
     if get_support_data:
         var_type.append('support_data')
 
-    varformat = varformat.replace("*", ".*") # what?  a varformat that started as None will now be '..*'?
+    varformat = varformat.replace("*", ".*")
     var_regex = re.compile(varformat)
 
     for filename in filenames:
@@ -110,8 +98,6 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                 continue
 
             if var_atts['VAR_TYPE'] in var_type:
-                # Why was it grabbing the same attributes again?
-                #var_atts = cdf_file.varattsget(var)
                 var_properties = cdf_file.varinq(var)
                 if "DEPEND_TIME" in var_atts:
                     x_axis_var = var_atts["DEPEND_TIME"]
@@ -210,8 +196,6 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                         if ydata[ydata == var_atts["FILLVAL"]].size != 0:
                             ydata[ydata == var_atts["FILLVAL"]] = np.nan
                 
-                # Removing tplot from the process
-                #tplot_data = {'x': xdata, 'y': ydata}
                 axis_data = {'x': xdata, 'y': ydata}
 
                 depend_1 = None
@@ -234,10 +218,6 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
 
                 if depend_1 is not None and depend_2 is not None \
                         and depend_3 is not None:
-                    # Removing tplot from the process
-                    #tplot_data['v1'] = depend_1
-                    #tplot_data['v2'] = depend_2
-                    #tplot_data['v3'] = depend_3
                     axis_data['v1'] = depend_1
                     axis_data['v2'] = depend_2
                     axis_data['v3'] = depend_3
@@ -250,9 +230,6 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                         nontime_varying_depends.append('v3')
 
                 elif depend_1 is not None and depend_2 is not None:
-                    # Removing tplot from the process
-                    #tplot_data['v1'] = depend_1
-                    #tplot_data['v2'] = depend_2
                     axis_data['v1'] = depend_1
                     axis_data['v2'] = depend_2
                     if len(depend_1.shape) == 1:
@@ -260,14 +237,10 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                     if len(depend_2.shape) == 1:
                         nontime_varying_depends.append('v2')
                 elif depend_1 is not None:
-                    # Removing tplot from the process
-                    #tplot_data['v'] = depend_1
                     axis_data['v'] = depend_1
                     if len(depend_1.shape) == 1:
                         nontime_varying_depends.append('v')
                 elif depend_2 is not None:
-                    # Removing tplot from the process
-                    #tplot_data['v'] = depend_2
                     axis_data['v'] = depend_2
                     if len(depend_2.shape) == 1:
                         nontime_varying_depends.append('v')
@@ -277,7 +250,6 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                     "SCALE_TYP", "linear")}
 
                 if var_name not in output_table:
-                    #output_table[var_name] = tplot_data
                     output_table[var_name] = axis_data
                 else:
                     var_data = output_table[var_name]
@@ -285,45 +257,6 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                         if output_var not in nontime_varying_depends:
                             var_data[output_var] = np.concatenate((
                                 var_data[output_var], axis_data[output_var]))
-                                #var_data[output_var], tplot_data[output_var]))
 
-    # Removing tplot from the process
-    #if notplot:
     return (output_table, metadata)
 
-    # Removing tplot from the process
-    #for var_name in output_table.keys():
-    #    to_merge = False
-    #    if (var_name in data_quants.keys()) and (merge is True):
-    #        prev_data_quant = data_quants[var_name]
-    #        to_merge = True
-    #
-    #    try:
-    #        store_data(var_name, data=output_table[var_name])
-    #    except ValueError:
-    #        continue
-    #
-    #    if var_name not in stored_variables:
-    #        stored_variables.append(var_name)
-    #
-    #    if metadata.get(var_name) is not None:
-    #        if metadata[var_name]['display_type'] == "spectrogram":
-    #            options(var_name, 'spec', 1)
-    #        if metadata[var_name]['scale_type'] == 'log':
-    #            options(var_name, 'ylog', 1)
-    #
-    #    if to_merge is True:
-    #        cur_data_quant = data_quants[var_name]
-    #        plot_options = copy.deepcopy(
-    #            data_quants[var_name].attrs['plot_options'])
-    #        data_quants[var_name] = xr.concat(
-    #            [prev_data_quant, cur_data_quant], dim='time')
-    #        data_quants[var_name].attrs['plot_options'] = plot_options
-    #
-    #if notplot:
-    #    return output_table
-    #
-    #if plot:
-    #    tplot(stored_variables)
-    #
-    #return stored_variables
