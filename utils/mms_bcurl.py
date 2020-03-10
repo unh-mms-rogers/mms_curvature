@@ -34,12 +34,12 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     Parameters:
         fields : list of dict
             List of variables containing the B-field for each spacecraft 
-            (in GSE coordinates)
+            (in Cartesian coordinates, e.g. GSE or GSM)
             Each item in list is expected to be a data dictionary
 
         positions : list of dict
             List of variables containing the S/C position vectors for 
-            each spacecraft (also GSE coordinates) 
+            each spacecraft (also in same coordinates as 'fields') 
             Each item in list is expected to be a data dictionary
 
         suffix: str
@@ -48,7 +48,9 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
 
     Notes:
         The input B-field data and position data are required to be in 
-        GSE coordinates
+        orthogonal Cartesian coordinates such as GSE or GSM and msut be the 
+        coordinate system for all inputs.  Output will be in same corrdinate 
+        system as inputs.
  
         Based on the original mms_curl, written in IDL, by Jonathan Eastwood 
 
