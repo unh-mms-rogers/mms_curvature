@@ -270,6 +270,9 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there's some simpler way to calculate this, but I haven't found it yet.
     # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
+
+    numBirds = 4    # Set for MMS.  Can be changed with rest of code to expand for a larger fleet
+
     tmpHarv = np.ndarray((3, t_master.shape[0], 3))
     tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
     tmpHarv[1] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-1,1)),np.square(numBirds))
