@@ -48,8 +48,8 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
 
     Notes:
         The input B-field data and position data are required to be in 
-        orthogonal Cartesian coordinates such as GSE or GSM and msut be the 
-        coordinate system for all inputs.  Output will be in same corrdinate 
+        orthogonal Cartesian coordinates such as GSE or GSM and must be the 
+        coordinate system for all inputs.  Output will be in same coordinate 
         system as inputs.
  
         Based on the original mms_curl, written in IDL, by Jonathan Eastwood 
