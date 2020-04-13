@@ -166,7 +166,7 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
         for lvl in level:
             for desc in descriptor:
                 mms_api_client = mms_sdc_api_client.MMS_SDC_API_CLIENT(
-                        sc=None, 
+                        sc=probe, 
                         instr=instrument, 
                         mode=data_rate, 
                         level=lvl,
