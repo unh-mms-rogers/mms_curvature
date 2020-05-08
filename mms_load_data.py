@@ -154,8 +154,8 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
         raise TypeError("Unsupported input format for end date/time.")
     
     # Replicating behavior of pyspedas:
-    start_date = local_trange[0].date().isoformat() # need to request full day, then parse out later
-    end_date = (local_trange[1] - timedelta(seconds=1)).isoformat() # -1 second to avoid getting data for the next day
+    start_date = local_trange[0].isoformat()
+    end_date = local_trange[1].isoformat()
     
     
     out_files = []
@@ -166,7 +166,7 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
         for lvl in level:
             for desc in descriptor:
                 mms_api_client = mms_sdc_api_client.MMS_SDC_API_CLIENT(
-                        sc=None, 
+                        sc=probe, 
                         instr=instrument, 
                         mode=data_rate, 
                         level=lvl,

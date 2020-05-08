@@ -132,9 +132,10 @@ def filter_time(fnames, start_date, end_date):
     """
     
     # Output
-    files = fnames
-    if isinstance(files, str):
-        files = [files]
+    outFiles = []
+    fileNames = fnames
+    if isinstance(fileNames, str):
+        fileNames = [fileNames]
     
     # Convert date range to datetime objects
     start_date = dt.datetime.strptime(start_date, '%Y-%m-%dT%H:%M:%S')
@@ -142,47 +143,59 @@ def filter_time(fnames, start_date, end_date):
     
     # Parse the time out of the file name
     parts = parse_filename(fnames)
-    fstart = [dt.datetime.strptime(name[-2], '%Y%m%d') if len(name[-2]) == 8 else
-              dt.datetime.strptime(name[-2], '%Y%m%d%H%M%S')
-              for name in parts]
     
-    # Sor the files by start time
-    isort = sorted(range(len(fstart)), key=lambda k: fstart[k])
-    fstart = [fstart[i] for i in isort]
-    files = [files[i] for i in isort]
+    craftSet = set()
+    for name in parts:
+        craftSet.add(name[0]) # First part is which spacecraft.
     
-    # End time
-    #   - Any files that start on or before END_DATE can be kept
-    idx = [i for i, t in enumerate(fstart) if t <= end_date ]
-    if len(idx) > 0:
-        fstart = [fstart[i] for i in idx]
-        files = [files[i] for i in idx]
-    else:
-        fstart = []
-        files = []
+    for craft in craftSet:
+        files = [f for f in fileNames if os.path.basename(f).startswith(craft)]
+        # Reparse just the set of files we're working with.
+        parts = parse_filename(files)
+        
+        fstart = [dt.datetime.strptime(name[-2], '%Y%m%d') if len(name[-2]) == 8 else
+                  dt.datetime.strptime(name[-2], '%Y%m%d%H%M%S')
+                  for name in parts]
+        
+        # Sor the files by start time
+        isort = sorted(range(len(fstart)), key=lambda k: fstart[k])
+        fstart = [fstart[i] for i in isort]
+        files = [files[i] for i in isort]
+        
+        # End time
+        #   - Any files that start on or before END_DATE can be kept
+        idx = [i for i, t in enumerate(fstart) if t <= end_date ]
+        if len(idx) > 0:
+            fstart = [fstart[i] for i in idx]
+            files = [files[i] for i in idx]
+        else:
+            fstart = []
+            files = []
+        
+        # Start time
+        #   - Any file with TSTART <= START_DATE can potentially have data
+        #     in our time interval of interest.
+        #   - Assume the start time of one file marks the end time of the previous file.
+        #   - With this, we look for the file that begins just prior to START_DATE and
+        #     throw away any files that start before it.
+#        idx = [i for i, t in enumerate(fstart) if t.date() < start_date.date()]
+        idx = [i for i, t in enumerate(fstart) if t >= start_date]
+        
+        if (len(idx) == 0) & (fstart[-1].date() == start_date.date()):
+            idx = [len(fstart)-1]
+        elif (len(idx) != 0) & ((idx[0] != 0) & (fstart[idx[0]] != start_date)):
+            idx.insert(0, idx[0]-1)
+        
+        if len(idx) > 0:
+            fstart = [fstart[i] for i in idx]
+            files = [files[i] for i in idx]
+        else:
+            fstart = []
+            files = []
+        
+        outFiles += files
     
-    # Start time
-    #   - Any file with TSTART <= START_DATE can potentially have data
-    #     in our time interval of interest.
-    #   - Assume the start time of one file marks the end time of the previous file.
-    #   - With this, we look for the file that begins just prior to START_DATE and
-    #     throw away any files that start before it.
-#    idx = [i for i, t in enumerate(fstart) if t.date() < start_date.date()]
-    idx = [i for i, t in enumerate(fstart) if t >= start_date]
-
-    if (len(idx) == 0) & (fstart[-1].date() == start_date.date()):
-        idx = [len(fstart)-1]
-    elif (len(idx) != 0) & ((idx[0] != 0) & (fstart[idx[0]] != start_date)):
-        idx.insert(0, idx[0]-1)
-    
-    if len(idx) > 0:
-        fstart = [fstart[i] for i in idx]
-        files = [files[i] for i in idx]
-    else:
-        fstart = []
-        files = []
-    
-    return files
+    return outFiles
 
 
 
