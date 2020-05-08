@@ -42,7 +42,7 @@ def sigmaAB(A, uA, B, uB, op='*'):
         print("Invalid operator.  Must be '*' or '/'")
         return None
 
-    return np.abs(np.multiply(uAB, f))
+    return uAB, np.abs(np.multiply(uAB, f))
 
 
 # end
