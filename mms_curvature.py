@@ -341,6 +341,35 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
         minB[minB==float_max] = 0
         outputs += (minR, minB)
 
+        ###  Inserting lines for calculating uncertainty of the gradient tensor
+
+        from mms_curvature.utils.uncertainty import sigmaAB
+
+        uB = 0.1    # default instrument uncertainty of the magnetometer is 0.1 nT
+        uR = 0.1    # default measurement uncertainty for position is 100m = 0.1km (I'd love to make this better)
+
+        # ugrad = array of uncertainty ratios (sigma_f/f) for each element of the grad_b array, assuming the smallest separation in both B and R and so the dominant source of error, maximum estimate
+
+        ugrad=np.array([[sigmaAB(minB[:,0], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,2], uR, op='*')[0]] \ 
+        ,[sigmaAB(minB[:,1], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,2], uR, op='*')[0]] \ 
+        ,[sigmaAB(minB[:,2], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,2], uR, op='*')[0]]])
+
+        # umag = uncertainty ratio (sigma_f/f) for each vector component of the magnetic field at the mesocenter
+
+        umag = np.divide(uB, np.multiply(bm, bmag))
+
+        # uk = uncertainty ratio (sigma_f/f) for the curvature vector 'k'
+
+        uk = np.einsum('...ij,...i', np.square(ugrad), np.square(umag))
+
+
+
+
+
+        # first input assumed to be magnetic field vector; second assumed to be position
+
+
+
     if report_all:
         # Use barr and B* to find minimum dB along each axis
         a_ne_b_list=[[1,2,3],[2,3],[3]]
