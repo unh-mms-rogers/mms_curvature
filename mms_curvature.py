@@ -362,6 +362,8 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
 
         uk = np.einsum('...ij,...i', np.square(ugrad), np.square(umag))
 
+        outputs += uk
+
 
 
 
