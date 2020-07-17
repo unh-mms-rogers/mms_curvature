@@ -350,13 +350,13 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
 
         # ugrad = array of uncertainty ratios (sigma_f/f) for each element of the grad_b array, assuming the smallest separation in both B and R and so the dominant source of error, maximum estimate
 
-        ugrad=np.array([[sigmaAB(minB[:,0], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,2], uR, op='*')[0]] \ 
-        ,[sigmaAB(minB[:,1], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,2], uR, op='*')[0]] \ 
-        ,[sigmaAB(minB[:,2], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,2], uR, op='*')[0]]])
+        ugrad=np.array([[sigmaAB(minB[:,0], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,2], uR, op='*')[0]],[sigmaAB(minB[:,1], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,2], uR, op='*')[0]], [sigmaAB(minB[:,2], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,2], uR, op='*')[0]]])
+
+        ugrad = np.moveaxis(ugrad,-1,0)     # to roll axis for (time,R3,R3) dimensions
 
         # umag = uncertainty ratio (sigma_f/f) for each vector component of the magnetic field at the mesocenter
 
-        umag = np.divide(uB, np.multiply(bm, bmag))
+        umag = np.divide(uB, np.multiply(bm, bmag.reshape(bmag.shape[0],1)))
 
         # uk = uncertainty ratio (sigma_f/f) for the curvature vector 'k'
 
