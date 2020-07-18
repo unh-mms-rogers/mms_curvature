@@ -339,7 +339,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
         minB = np.minimum.reduce(np.abs(triB), axis=(-1,-2), initial=np.finfo(float).max, where=np.logical_not(np.isclose(triB,0,atol=0)))
         minR[minR==float_max] = 0 # Resets any timesteps for which all differences were 0.  (Ludicriously unlikely, but should still do the check.)
         minB[minB==float_max] = 0
-        outputs += (minR, minB)
+        # outputs += (minR, minB)
 
         ###  Inserting lines for calculating uncertainty of the gradient tensor
 
@@ -363,7 +363,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
 
         uk = np.einsum('...ij,...i', np.square(ugrad), np.square(umag))
 
-        outputs += uk
+        outputs += (minR, minB, uk)
 
 
 
