@@ -357,6 +357,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
         # umag = uncertainty ratio (sigma_f/f) for each vector component of the magnetic field at the mesocenter
 
         umag = np.divide(uB, np.multiply(bm, bmag.reshape(bmag.shape[0],1)))
+        print('umag shape = ', umag.shape)
 
         # uk = uncertainty ratio (sigma_f/f) for the curvature vector 'k'
 
@@ -391,9 +392,11 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
         #end for
 
         outputs += (rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)  #used for troubleshooting
+    
 
     return outputs
     
+    # with report_all and with_uncertainty outputs = (t_master, grad_Harvey, curve_Harvey, minR, minB, uk, rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)
 
 
 
