@@ -4,7 +4,6 @@
 # All modifications copyright 2020 Tim Rogers.  All rights reserved.
 # Released under the MIT license.
 
-import math
 import numpy as np
 #from pytplot import get_data, store_data, options
 #from pyspedas import tinterpol
@@ -104,7 +103,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
         datapos[bird,:,1] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,1])
         datapos[bird,:,2] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,2])
 
-    m0 = 4.0*math.pi*1e-7 #  permeability of free space in SI units (H/m)
+    m0 = 4.0*np.pi*1e-7 #  permeability of free space in SI units (H/m)
 
     # Calculate barycentre for each timestep
     barycentre = np.divide(np.add.reduce(datapos), datapos.shape[0])
