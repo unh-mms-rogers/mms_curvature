@@ -11,6 +11,7 @@ from p_tqdm import p_map
 import datetime as dt
 from urllib.parse import parse_qs
 from . import mms_utils
+from functools import partial
 
 def EnsurePathExists(pathname):
     if not os.path.isdir(os.path.dirname(pathname)): os.makedirs(os.path.dirname(pathname), exist_ok=True)
@@ -259,7 +260,8 @@ class MMS_SDC_API_CLIENT:
             
             # Download files individually, in parallel
             try:
-                newfiles = p_map(self.DownloadFile,file_info['files'], url)
+                # newfiles = p_map(self.DownloadFile,file_info['files'], url)
+                newfiles = p_map(partial(self.DownloadFile, url=url), file_info['files'])
             except:
                 for key in state:
                     self.files = None
