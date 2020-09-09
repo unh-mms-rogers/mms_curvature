@@ -316,60 +316,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
 
     outputs = (t_master, grad_Harvey, curve_Harvey)
 
-    if with_uncertainty:
-        float_max = np.finfo(float).max
-        '''
-        Breakdown of the following pair of lines:
-        np.minimum.reduce(...) -    This will be producing a result array of rank 2 (timesteps, spacial direction 3-vector)
-                                    from a rank 4 input array, by returning the minimum value from the num_birds X num_birds
-                                    sub-matrix containing value differences between each pair of spacecraft.
-        np.abs(input_array) -   We only care about relative distance of the values between spacecraft, so we compare the
-                                absolute values of <input_array>.
-        axis=(-1,-2) -  Input for the reduce function.  Collapse the last (-1) and next-to-last (-2) dimensions of the input.
-        initial=float_max  -  Sets the initial value to compare with for each set to max possible float value.
-                              This ensures that any comparison will result in the recorded value.
-        where=np.logical_not(np.isclose(triR,0,atol=0)) - 
-                        This means we're only performing comparisons with non-zero values.  In the vanishingly rare
-                        circumstance that the smallest difference between two spacecraft _is_ 0, we use the
-                        second-smallest difference.
-                        If there is somehow a measurement where all spacecraft perfectly agree, the min value will
-                        be set to 0 by the two lines following the initial reduction.
-        '''
-        minR = np.minimum.reduce(np.abs(triR), axis=(-1,-2), initial=np.finfo(float).max, where=np.logical_not(np.isclose(triR,0,atol=0)))
-        minB = np.minimum.reduce(np.abs(triB), axis=(-1,-2), initial=np.finfo(float).max, where=np.logical_not(np.isclose(triB,0,atol=0)))
-        minR[minR==float_max] = 0 # Resets any timesteps for which all differences were 0.  (Ludicriously unlikely, but should still do the check.)
-        minB[minB==float_max] = 0
-        # outputs += (minR, minB)
-
-        ###  Inserting lines for calculating uncertainty of the gradient tensor
-
-        from mms_curvature.utils.uncertainty import sigmaAB
-
-        uB = 0.1    # default instrument uncertainty of the magnetometer is 0.1 nT
-        uR = 0.1    # default measurement uncertainty for position is 100m = 0.1km (I'd love to make this better)
-
-        # ugrad = array of uncertainty ratios (sigma_f/f) for each element of the grad_b array, assuming the smallest separation in both B and R and so the dominant source of error, maximum estimate
-
-        ugrad=np.array([[sigmaAB(minB[:,0], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,0], uB, minR[:,2], uR, op='*')[0]],[sigmaAB(minB[:,1], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,1], uB, minR[:,2], uR, op='*')[0]], [sigmaAB(minB[:,2], uB, minR[:,0], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,1], uR, op='*')[0], sigmaAB(minB[:,2], uB, minR[:,2], uR, op='*')[0]]])
-
-        ugrad = np.moveaxis(ugrad,-1,0)     # to roll axis for (time,R3,R3) dimensions
-
-        # umag = uncertainty ratio (sigma_f/f) for each vector component of the magnetic field at the mesocenter
-
-        umag = np.divide(uB, np.multiply(bm, bmag.reshape(bmag.shape[0],1)))
-
-        # uk = uncertainty ratio (sigma_f/f) for the curvature vector 'k'
-
-        uk = np.einsum('...ij,...i', np.square(ugrad), np.square(umag))
-
-        outputs += (minR, minB, uk)
-
-
-
-
-
-        # first input assumed to be magnetic field vector; second assumed to be position
-
 
 
     if report_all:
