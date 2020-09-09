@@ -28,10 +28,13 @@ np.save("grad_Harvey.npy", grad_Harvey)
 ****************************************************************************
 
 ---AJR 08.22.2019
+
+
+NOTE: Need to update the docstring for mms_Grad after refactoring
 '''
 import numpy as np
 
-def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4, report_all=False): 
+def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4): 
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
@@ -93,39 +96,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
 
 
 
-    # The below code is preseved in case a future need calls for timesteps to by trimmed
-    #  in this function instead of during data load of input for this function.
-    '''
-    # need to clear extranious data points from positional data for
-    #   np.interp to work as intended.
-    bcnt = 0        # MMS1
-    while postime1[bcnt] < t_master[0] and bcnt: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime1[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos1 = pos1[(bcnt-1):(ecnt+1),:]
-    postime1 = postime1[(bcnt-1):(ecnt+1),:]
-   
-    bcnt = 0        # MMS2
-    while postime2[bcnt] < t_master[0]: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime2[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos2 = pos2[(bcnt-1):(ecnt+1),:]
-    postime2 = postime2[(bcnt-1):(ecnt+1),:]
-
-    bcnt = 0        # MMS3
-    while postime3[bcnt] < t_master[0]: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime3[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos3 = pos3[(bcnt-1):(ecnt+1),:]
-    postime3 = postime3[(bcnt-1):(ecnt+1),:]
-    
-    bcnt = 0        # MMS4
-    while postime4[bcnt] < t_master[0]: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime4[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos4 = pos4[(bcnt-1):(ecnt+1),:]
-    postime4 = postime4[(bcnt-1):(ecnt+1),:]
-    ''' 
     
     # master position data array, with interpolated value
     # Spacecraft position data, interpolated to the previously determined master time sequence
@@ -285,11 +255,6 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
                   np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0))) \
                   , (0,2,1)) # Due to all the matrix rolling shenanigans leading up to this, we need to transpose the matrix from each timestep.
 
-    # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
-    # The below gives identical results as, but is much more efficient than: 
-    #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])
-    curve_Harvey = np.einsum('...ij,...j', grad_Harvey, bm)
-    
     ## List of references for how numpy.einsum operates:
     # 
     # Official docs on einsum (as of numpy 1.18): https://numpy.org/doc/1.18/reference/generated/numpy.einsum.html
@@ -313,38 +278,104 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     for t in range(t_master.shape[0]):
         sol_curve_Harvey[t,:] = np.matmul(sol_grad_Harvey[t,:,:], bm[t,:])
     '''         # Solenoid correction has little effect, which is not surprising
-
-    outputs = (t_master, grad_Harvey, curve_Harvey)
-
-
-
-    if report_all:
-        # Use barr and B* to find minimum dB along each axis
-        a_ne_b_list=[[1,2,3],[2,3],[3]]
-        B_arr = [B1, B2, B3, B4]
-        dBmin = np.full((t_master.shape[0],3), np.inf)     # minimum dB for x,y,z GSM 
-        for t in range(t_master.shape[0]):          # step through the time series
-            for a in range(3):                      # a = MMS 1(0)  -> 3(2); MMS 4 done implicitly
-                for b in a_ne_b_list[a]:            # b for sc_a != sc_b to do all possible combonations
-                    tmp_x = (barr[a,t,0] * B_arr[a][t]) - (barr[b,t,0] * B_arr[b][t])
-                    tmp_y = (barr[a,t,1] * B_arr[a][t]) - (barr[b,t,1] * B_arr[b][t])
-                    tmp_z = (barr[a,t,2] * B_arr[a][t]) - (barr[b,t,2] * B_arr[b][t])
-                    if tmp_x < dBmin[t,0]: dBmin[t,0] = tmp_x
-                    if tmp_y < dBmin[t,1]: dBmin[t,1] = tmp_y   # finds minimum change in B along each axis
-                    if tmp_z < dBmin[t,2]: dBmin[t,2] = tmp_z
-                #end for
-            #end for
-        #end for
-
-        outputs += (rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)  #used for troubleshooting
     
 
-    return outputs
+    return grad_Harvey, bm, bmag, rm
+
+
+
+
+def mms_Curvature(grad, bm):
+    '''
+    function to calculate magnetic field line curvature vector k = b . grad(b) from the 
+    magnetic field spacial gradient (grad) and the normalized magnetic field vector at 
+    the barycenter of the spacecraft formation (bm)
+
+    Inputs:
+    grad    : a time series array with dimensions t x 3 x 3 representing the spacial
+              gradient of the normalized magnetic field grad(b) at each time step.
+              Assumed to be the output from the mms_Grad function described in this 
+              library module.
+
+    bm      : a time series array with dimensions t x 3 representing the normalized 
+              vector magnetic field b = B/|B| at each time step.  Assumed to be the
+              output of the mms_Grad function described in this library.
+
+    ---NB: 'grad' and 'bm' are assumed to have identical timesteps, beginning, and 
+           ending times, as expected from the outputs of the mms_Grad function 
+           described in this library.
+
+    Outputs:
+    curve_Harvey    : a time series array with dimensions t x 3 representing the 
+                      magnetic field line curvature vector in 3 dimensions at the
+                      same time steps as used for the input arrays.
+    '''
+
+
+    # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
+    # The below gives identical results as, but is much more efficient than: 
+    #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])
+    curve_Harvey = np.einsum('...ij,...j', grad_Harvey, bm)
     
-    # with report_all and with_uncertainty outputs = (t_master, grad_Harvey, curve_Harvey, minR, minB, uk, rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)
+    return curve_Harvey
+
+    
+
+def mms_CurlB(Grad):
+    '''
+    Function to calculate the curl of the magnetic field by applying a rank 3 
+    Levi-Civita tensor to the spacial gradient of the full vector magnetic 
+    field (NOTE: NOT the gradient of the normalized vector magnetic field as
+    used in the curvature vector calculation).
+
+    Inputs:
+    Grad    : A time series array with dimensions t x 3 x 3 representing the 
+              spacial gradient of the vector magnetic field grad(B) at each
+              time step.  Assumed to be the output rom the mms_Grad function
+              described in this library module.
+
+    Outputs:
+    CurlB   : A time series array with dimensions t x 3 representing the curl
+              of the vector magnetic field in 3 dimensions at the same time
+              steps as used for hte input Grad array.
+    '''
+    
+    # Define the rank 3 Levi-Civita tensor
+    LevCiv3 = np.zeros((3,3,3))
+    LevCiv3[0,1,2] = LevCiv3[1,2,0] = LevCiv3[2,0,1] = 1
+    LevCiv3[0,2,1] = LevCiv3[2,1,0] = LevCiv3[1,0,2] = -1
+
+    CurlB = np.einsum('ijk,...jk',LevCiv3, Grad)
+
+    return CurlB
+
+
+
+def mms_DivB(Grad):
+    '''
+    Function to calculate the divergence of the magnetic field by taking the
+    trace of the spacial gradient fo the full vector magnetic field (NOTE: 
+    NOT the gradient of the normalized vector magnetic foeld as used in the 
+    curvature vector calculation).
+
+    Inputs:
+    Grad    : A time series array with dimensions t x 3 x 3 representing the 
+              spacial gradient of the vector magnetic field grad(B) at each
+              time step.  Assumed to be the output rom the mms_Grad function
+              described in this library module.
+
+    Outputs:
+    DivB    : A time series array with dimension t representing the divergence
+              of the vector magnetic field div(B) at the same time steps as 
+              used for the input Grad array.
+    '''
+
+    DivB = np.einsum('...ii', Grad)
+
+    return DivB
+    
 
 
 
 
 
-# end
