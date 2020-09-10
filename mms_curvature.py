@@ -34,17 +34,24 @@ NOTE: Need to update the docstring for mms_Grad after refactoring
 '''
 import numpy as np
 
-def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4): 
+def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4, normalize=True):
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
     '''
     
-    # normalize magnetic fields
-    bn1 = mag1[:,0:3]/mag1[:,3,np.newaxis]
-    bn2 = mag2[:,0:3]/mag2[:,3,np.newaxis]
-    bn3 = mag3[:,0:3]/mag3[:,3,np.newaxis]
-    bn4 = mag4[:,0:3]/mag4[:,3,np.newaxis]
+    if normalize:
+        # normalize magnetic fields
+        bn1 = mag1[:,0:3]/mag1[:,3,np.newaxis]
+        bn2 = mag2[:,0:3]/mag2[:,3,np.newaxis]
+        bn3 = mag3[:,0:3]/mag3[:,3,np.newaxis]
+        bn4 = mag4[:,0:3]/mag4[:,3,np.newaxis]
+    else:
+        # use magnetic fields without normalizing
+        bn1 = mag1[:,0:3]
+        bn2 = mag2[:,0:3]
+        bn3 = mag3[:,0:3]
+        bn4 = mag4[:,0:3]
 
     # find probe with latest beginning point for magnetic field data
     mastersc = np.argmax([magtime1[0], magtime2[0], magtime3[0], magtime4[0]])
@@ -122,7 +129,7 @@ def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, pos
     # ie.  rarr[<spacecraft>, <timestep_index>, <cartesian_component_of_vector>]
     # eg.  Y-position of mms4 at first time step:  rarr[3,0,1]
     
-    # calculate position and normalized magnetic field at mesocenter of the fleet
+    # calculate position and magnetic field at mesocenter of the fleet
     
     
     # Commenting old implementation
@@ -287,7 +294,7 @@ def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, pos
 
 def mms_Curvature(grad, bm):
     '''
-    function to calculate magnetic field line curvature vector k = b . grad(b) from the 
+    function to calculate magnetic field line curvature vector k = b · grad(b) from the
     magnetic field spacial gradient (grad) and the normalized magnetic field vector at 
     the barycenter of the spacecraft formation (bm)
 
@@ -331,7 +338,7 @@ def mms_CurlB(Grad):
     Inputs:
     Grad    : A time series array with dimensions t x 3 x 3 representing the 
               spacial gradient of the vector magnetic field grad(B) at each
-              time step.  Assumed to be the output rom the mms_Grad function
+              time step.  Assumed to be the output from the mms_Grad function
               described in this library module.
 
     Outputs:
@@ -361,7 +368,7 @@ def mms_DivB(Grad):
     Inputs:
     Grad    : A time series array with dimensions t x 3 x 3 representing the 
               spacial gradient of the vector magnetic field grad(B) at each
-              time step.  Assumed to be the output rom the mms_Grad function
+              time step.  Assumed to be the output from the mms_Grad function
               described in this library module.
 
     Outputs:
