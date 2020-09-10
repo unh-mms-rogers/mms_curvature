@@ -33,7 +33,7 @@ np.save("grad_Harvey.npy", grad_Harvey)
 # end
 ****************************************************************************
 
----AJR 08.22.2019
+---TJR 10.09.2020
 
 
 NOTE: Need to update the docstring for mms_Grad after refactoring
