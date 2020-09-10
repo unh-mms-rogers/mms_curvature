@@ -7,18 +7,24 @@ Uses pyspedas for MMS data file loading
 Example script for loading required data and calculating the curvature vector:
     
 import time
+import re
 import numpy as np
-from mms_curvature import DataLoad, Curvature
+from mms_curvature import DataLoad, mms_Grad, mms_Curvature
 
 timeStart =  time.strftime("%H:%M:%S", time.localtime())
 print("Files Loading:")
 
-postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4 = DataLoad(trange=['2017-05-04', '2017-05-05'])
+data,metadata = DataLoad(trange=['2017-05-04', '2017-05-05'])
+postimes = [data['mec'][n]['x'] for n in data['mec'] if re.compile('mms\d_mec_r_gsm_srvy_l2').match(n)]
+posvalues = [data['mec'][n]['y'] for n in data['mec'] if re.compile('mms\d_mec_r_gsm_srvy_l2').match(n)]
+magtimes = [data['fgm'][n]['x'] for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2').match(n)]
+magvalues = [data['fgm'][n]['y'] for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2').match(n)]
 
 print("Time started: ", timeStart)
 print("Time Loaded: ", time.strftime("%H:%M:%S", time.localtime()))
 
-t_master, grad_Harvey, curve_Harvey = Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4)
+grad_Harvey, bm, bmag, rm, t_master = mms_Grad(postimes, posvalues, magtimes, magvalues)
+curve_Harvey = mms_Curvature(grad_Harvey, bm)
 
 np.savetxt("t_master.csv", t_master, delimiter=",")
 np.savetxt("curve_Harvey.csv", curve_Harvey, delimiter=",")
@@ -34,95 +40,78 @@ NOTE: Need to update the docstring for mms_Grad after refactoring
 '''
 import numpy as np
 
-def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4): 
+def mms_Grad(postimes, posvalues, magtimes, magvalues, normalize=True):
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
     '''
     
-    # normalize magnetic fields
-    bn1 = mag1[:,0:3]/mag1[:,3,np.newaxis]
-    bn2 = mag2[:,0:3]/mag2[:,3,np.newaxis]
-    bn3 = mag3[:,0:3]/mag3[:,3,np.newaxis]
-    bn4 = mag4[:,0:3]/mag4[:,3,np.newaxis]
+    # Number of spacecraft in inputs.  Assumed from number of position time arrays.
+    numBirds = len(postimes)
+
+    # Sanity check.  Throw an error if number of time arrays and data arrays don't all match.
+    if len(posvalues) != numBirds: raise ValueError('Number of position value arrays does not match number of position time arrays!')
+    if len(magtimes) != numBirds: raise ValueError('Number of magnetic field time arrays does not match number of position time arrays!')
+    if len(magvalues) != numBirds: raise ValueError('Number of magnetic field value arrays does not match number of position time arrays!')
+
+
+    bn = [None]*len(numBirds)
+    if normalize:
+        # normalize magnetic fields
+        for bird in range(numBirds):
+            bn[bird] = magvalues[bird][:,0:3]/magvalues[bird][:,3,np.newaxis]
+    else:
+        # use magnetic fields without normalizing
+        for bird in range(numBirds):
+            bn[bird] = magvalues[bird][:,0:3]
 
     # find probe with latest beginning point for magnetic field data
-    mastersc = np.argmax([magtime1[0], magtime2[0], magtime3[0], magtime4[0]])
+    firsttimes = []
+    lasttimes = []
+    for bird in range(numBirds):
+        firsttimes.append(magtimes[bird][0])
+        lasttimes.append(magtimes[bird][-1])
+    mastersc = np.argmax(firsttimes)
     # find earliest end time for all space craft in range
-    tend = min(magtime1[-1], magtime2[-1], magtime3[-1], magtime4[-1])
+    tend = min(lasttimes)
     tend_i = 0  # initialize counting index for finding ending index for master S/C
     
     # initialize master time sequence by trimming time from last S/C to start (mastersc)
-    if mastersc == 0:
-        while magtime1[tend_i] < tend: tend_i += 1
-        t_master = magtime1[0:(tend_i+1)]
-    elif mastersc == 1:
-        while magtime2[tend_i] < tend: tend_i += 1
-        t_master = magtime2[0:(tend_i+1)]
-    elif mastersc == 2:
-        while magtime3[tend_i] < tend: tend_i += 1
-        t_master = magtime3[0:(tend_i+1)]
-    elif mastersc == 3:
-        while magtime4[tend_i] < tend: tend_i += 1
-        t_master = magtime4[0:(tend_i+1)]
+    while magtimes[mastersc][tend_i] < tend: tend_i += 1
+    t_master = magtimes[mastersc][0:(tend_i+1)]
     
     # master mag field data arr, with interpolated values
     # Magnetic field data, interpolated to the previously determined master time sequence
-    barr=np.ndarray((4,t_master.shape[0],3))
+    barr=np.ndarray((numBirds,t_master.shape[0],3))
+    for bird in range(numBirds):
+        barr[bird,:,0] = np.interp(t_master, magtimes[bird], bn[bird][:,0])
+        barr[bird,:,1] = np.interp(t_master, magtimes[bird], bn[bird][:,1])
+        barr[bird,:,2] = np.interp(t_master, magtimes[bird], bn[bird][:,2])
     
-    barr[0,:,0] = np.interp(t_master, magtime1, bn1[:,0]) # MMS1
-    barr[0,:,1] = np.interp(t_master, magtime1, bn1[:,1]) 
-    barr[0,:,2] = np.interp(t_master, magtime1, bn1[:,2]) 
-    
-    barr[1,:,0] = np.interp(t_master, magtime2, bn2[:,0]) # MMS2
-    barr[1,:,1] = np.interp(t_master, magtime2, bn2[:,1]) 
-    barr[1,:,2] = np.interp(t_master, magtime2, bn2[:,2]) 
-    
-    barr[2,:,0] = np.interp(t_master, magtime3, bn3[:,0]) # MMS3
-    barr[2,:,1] = np.interp(t_master, magtime3, bn3[:,1]) 
-    barr[2,:,2] = np.interp(t_master, magtime3, bn3[:,2]) 
-    
-    barr[3,:,0] = np.interp(t_master, magtime4, bn4[:,0]) # MMS4
-    barr[3,:,1] = np.interp(t_master, magtime4, bn4[:,1]) 
-    barr[3,:,2] = np.interp(t_master, magtime4, bn4[:,2]) 
 
 
     # Calculate average |B| for export
-    B1 = np.interp(t_master, magtime1, mag1[:,3])
-    B2 = np.interp(t_master, magtime2, mag2[:,3])
-    B3 = np.interp(t_master, magtime3, mag3[:,3])
-    B4 = np.interp(t_master, magtime4, mag4[:,3])
-    bmag = np.average([B1, B2, B3, B4], axis=0)
-
+    Bvals = [None]*numBirds
+    for bird in range(numBirds):
+        Bvals[bird] = np.interp(t_master, magtimes[bird], magvalues[bird][:,3])
+    bmag = np.average(Bvals, axis=0)
 
 
     
     # master position data array, with interpolated value
     # Spacecraft position data, interpolated to the previously determined master time sequence
-    rarr = np.ndarray((4,t_master.shape[0],3))
+    rarr = np.ndarray((numBirds,t_master.shape[0],3))
+    for bird in range(numBirds):
+        rarr[bird,:,0] = np.interp(t_master, postimes[bird], posvalues[bird][:,0])
+        rarr[bird,:,1] = np.interp(t_master, postimes[bird], posvalues[bird][:,1])
+        rarr[bird,:,2] = np.interp(t_master, postimes[bird], posvalues[bird][:,2])
     
-    rarr[0,:,0] = np.interp(t_master, postime1, pos1[:,0]) # MMS1
-    rarr[0,:,1] = np.interp(t_master, postime1, pos1[:,1])
-    rarr[0,:,2] = np.interp(t_master, postime1, pos1[:,2])
-    
-    rarr[1,:,0] = np.interp(t_master, postime2, pos2[:,0]) # MMS2
-    rarr[1,:,1] = np.interp(t_master, postime2, pos2[:,1])
-    rarr[1,:,2] = np.interp(t_master, postime2, pos2[:,2])
-    
-    rarr[2,:,0] = np.interp(t_master, postime3, pos3[:,0]) # MMS3
-    rarr[2,:,1] = np.interp(t_master, postime3, pos3[:,1])
-    rarr[2,:,2] = np.interp(t_master, postime3, pos3[:,2])
-    
-    rarr[3,:,0] = np.interp(t_master, postime4, pos4[:,0]) # MMS4
-    rarr[3,:,1] = np.interp(t_master, postime4, pos4[:,1])
-    rarr[3,:,2] = np.interp(t_master, postime4, pos4[:,2])
-    
-    # Now all magnetic fields and positional data of of the same cadence and at the same times for each index
+    # Now all magnetic fields and positional data are of the same cadence and at the same times for each index
     # Indices are: [s/c(0=mms1, 1=mms2, 2=mms3, 3=mms4), time_step, vector(0=x, 1=y, 2=z)]
     # ie.  rarr[<spacecraft>, <timestep_index>, <cartesian_component_of_vector>]
     # eg.  Y-position of mms4 at first time step:  rarr[3,0,1]
     
-    # calculate position and normalized magnetic field at mesocenter of the fleet
+    # calculate position and magnetic field at mesocenter of the fleet
     
     
     # Commenting old implementation
@@ -241,8 +230,6 @@ def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, pos
     # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there's some simpler way to calculate this, but I haven't found it yet.
     # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
 
-    numBirds = 4    # Set for MMS.  Can be changed with rest of code to expand for a larger fleet
-
     tmpHarv = np.ndarray((3, t_master.shape[0], 3))
     tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
     tmpHarv[1] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-1,1)),np.square(numBirds))
@@ -280,14 +267,14 @@ def mms_Grad(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, pos
     '''         # Solenoid correction has little effect, which is not surprising
     
 
-    return grad_Harvey, bm, bmag, rm
+    return grad_Harvey, bm, bmag, rm, t_master
 
 
 
 
 def mms_Curvature(grad, bm):
     '''
-    function to calculate magnetic field line curvature vector k = b . grad(b) from the 
+    function to calculate magnetic field line curvature vector k = b · grad(b) from the
     magnetic field spacial gradient (grad) and the normalized magnetic field vector at 
     the barycenter of the spacecraft formation (bm)
 
@@ -331,7 +318,7 @@ def mms_CurlB(Grad):
     Inputs:
     Grad    : A time series array with dimensions t x 3 x 3 representing the 
               spacial gradient of the vector magnetic field grad(B) at each
-              time step.  Assumed to be the output rom the mms_Grad function
+              time step.  Assumed to be the output from the mms_Grad function
               described in this library module.
 
     Outputs:
@@ -361,7 +348,7 @@ def mms_DivB(Grad):
     Inputs:
     Grad    : A time series array with dimensions t x 3 x 3 representing the 
               spacial gradient of the vector magnetic field grad(B) at each
-              time step.  Assumed to be the output rom the mms_Grad function
+              time step.  Assumed to be the output from the mms_Grad function
               described in this library module.
 
     Outputs:
