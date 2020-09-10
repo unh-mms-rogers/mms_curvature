@@ -50,7 +50,8 @@ logging.captureWarnings(True)
 logging.basicConfig(format='%(asctime)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srvy', level='l2', 
-    instrument='fgm', datatype='', descriptor=None, varformat=None, prefix='', suffix='', get_support_data=False, time_clip=False, 
+    instrument='fgm', datatype='', anc_product=None, descriptor=None, 
+    varformat=None, prefix='', suffix='', get_support_data=False, time_clip=False, 
     no_update=False, center_measurement=False, notplot=False, data_root=None):
     """
     This function loads MMS data into a dictionary by variable name.
@@ -125,13 +126,14 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
 
     """
 
-    if not isinstance(probe, list): probe = [probe]
-    if not isinstance(data_rate, list): data_rate = [data_rate]
-    if not isinstance(level, list): level = [level]
+    if not (isinstance(probe, list) or probe is None): probe = [probe]
+    if not (isinstance(data_rate, list) or data_rate is None): data_rate = [data_rate]
     if not isinstance(datatype, list): datatype = [datatype]
+    if not isinstance(level, list): level = [level]
     if not isinstance(descriptor, list): descriptor = [descriptor]
     
-    probe = [('mms'+(str(p))) for p in probe]
+    if probe:
+      probe = [('mms'+(str(p))) for p in probe]
 
     # We're going to handle everything as datetime objects fo consistancy and easy conversion at-need.
     local_trange = [None,None]
@@ -172,6 +174,7 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
                         mode=data_rate, 
                         level=lvl,
                         data_type=dtype,
+                        anc_product=anc_product,
                         data_root=data_root,
                         end_date=end_date,
                         offline=no_update,
