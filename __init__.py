@@ -16,6 +16,11 @@ from .mms_load_data_shims import mms_load_dsp
 from .mms_load_data_shims import mms_load_aspoc
 from .mms_load_data_shims import mms_load_fsm
 from .mms_load_data import mms_load_data
-from .mms_curvature import Curvature
+from .mms_curvature import mms_Grad
+from .mms_curvature import mms_Curvature
+from .mms_curvature import mms_CurlB
+from .mms_curvature import mms_DivB
 from .utils.mms_bcurl import mms_bcurl
 from .utils.mms_TQF import get_TQF
+from .utils.mms_gyroradius.py import DataLoadMoments
+from .utils.mms_gyroradius.py import CalcRadius

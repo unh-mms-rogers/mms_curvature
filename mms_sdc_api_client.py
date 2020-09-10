@@ -202,7 +202,10 @@ class MMS_SDC_API_CLIENT:
         # Amount to download per iteration
         block_size = 1024*128
         # Create the destination directory
-        file = self.name2path(info['file_name'])
+        if 'ancillary' in url:
+            file = self.ancillaryname2path(info['file_name'])
+        else:
+            file = self.name2path(info['file_name'])
         EnsurePathExists(file)
         
         # downloading: https://stackoverflow.com/questions/16694907/how-to-download-large-file-in-python-with-requests-py
@@ -429,6 +432,39 @@ class MMS_SDC_API_CLIENT:
         
         return path
     
+    def ancillaryname2path(self, filename):
+        """Convert remote file name to local file name. (Ancillary data)
+        
+        Directories of a remote file name are separated by the '/' character,
+        as in a web address.
+        
+        Parameters
+        ----------
+        filename:  str
+                   File name for which the local path is desired.
+        
+        Returns
+        -------
+        local_name:  Equivalent local file name. This is the location to
+                     which local files are downloaded.
+        """
+        parts = filename.split('_')
+        
+        # Ancillary path structure:
+        #   <data_root>\ancillary\<spacecraft>\<product>\<file>
+        
+        # Ancillary filename structure:
+        #   [0]: Spacecraft
+        #   [1]: Ancillary Product (we'll return this as the Instrument ID)
+        #   [2]: Start_date in '%Y%j' format (4-digit year, 3-digit day-of-year)
+        #   [3]: End_date in '%Y%j' format (as above)
+        #   extension: Version
+        
+        path = os.path.join(self.data_root, 'ancillary', *parts[0:-2], filename)
+        
+        
+        return path
+    
     def ParseFileNames(self, filename):
         """Parse file names.
         
@@ -497,6 +533,8 @@ class MMS_SDC_API_CLIENT:
             query['start_date'] = self._start_date.strftime('%Y-%m-%d')
         if self.end_date is not None:
             query['end_date'] = end_date
+        if self.anc_product is not None:
+            query['product'] = self.anc_product if isinstance(self.anc_product, str) else ','.join(self.anc_product)
         
         return query
     

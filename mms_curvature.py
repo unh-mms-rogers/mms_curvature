@@ -216,6 +216,24 @@ def mms_Grad(postimes, posvalues, magtimes, magvalues, normalize=True):
     #  [0      ,  0      ,  0      , b_3-b_4],
     #  [0      ,  0      ,  0      , 0      ]]
     
+    # For each timestep t, dtemp[:,t,:] now looks like this:
+    # dtemp[:,t] = [[dB_x*dR_x, dB_y*dR_y, dB_z*dR_z],
+    #               [dB_x*dR_y, dB_y*dR_z, dB_z*dR_x],
+    #               [dB_x*dR_z, dB_y*dR_x, dB_z*dR_y]]
+    
+    # The below constructs dbdr by twisting the dtemp array to properly place the diagonals for dbdr.
+    #
+    # dbdr[t] = [[dtemp[0,t,0], dtemp[1,t,0], dtemp[2,t,0],
+    #            [dtemp[2,t,1], dtemp[0,t,1], dtemp[1,t,1],
+    #            [dtemp[1,t,2], dtemp[2,t,2], dtemp[0,t,2]]
+    #
+    # ===
+    #
+    # dbdr[t] = [[dB_x*dR_x, dB_x*dR_y, dB_x*dR_z],
+    #            [dB_y*dR_x, dB_y*dR_y, dB_y*dR_z],
+    #            [dB_z*dR_x, dB_z*dR_y, dB_z*dR_z]]
+    #
+    
     # Calculate the partial components for dbdr
     dtemp = np.ndarray((3, t_master.shape[0], 3))
     dtemp[0] = np.einsum('...ab,...ab',triB,triR) #This gets us the diagonals of dbdr for B_i and R_i (eg, both x components, both y, ...)
