@@ -189,7 +189,7 @@ class MMS_SDC_API_CLIENT:
                 raise ConnectionError('Failed log-in.')
         
         else:
-            raise ConnectionError(r.reason)
+            raise ConnectionError(response.reason)
         
         # Return the resulting request
         return r
