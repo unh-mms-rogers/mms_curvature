@@ -37,9 +37,11 @@ import os
 import requests
 import logging
 import numpy as np
-from .load_cdf import load_cdf
+from .load_datafile import load_datafile
 from p_tqdm import p_map
 from functools import partial
+import pandas as pd
+import re
 
 from dateutil.parser import parse
 from datetime import timedelta, datetime, timezone
@@ -79,6 +81,9 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
             One or more types of data to load.
             Must be selected from this list: ['ancillary', 'hk', 'science']
             If given as an empty string or not provided, will default to 'science' data.
+
+        anc_product : str or list of str
+            One or more ancillary products to load.
 
         descriptor : str or list of str
             Optional name(s) of data subset(s) to load.
@@ -200,12 +205,43 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     # This attempts to load all requested cdf files into memory concurrently, using as many threads as the system permits.
     # The load_cdf function returns a tuple of (data, metadata), so pile_o_data will be a list of these tuples.
     # pile_o_data = p_map(load_cdf, out_files, varformat, get_support_data, prefix, suffix, center_measurement)
-    pile_o_data = p_map(partial(load_cdf, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement), out_files)
+    pile_o_data = p_map(partial(load_datafile, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement), out_files)
+    ##pile_o_data = p_map(partial(load_cdf, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement), out_files)
 
     # Merge matching variable names across loaded files.
     logging.info('Stitching together the data...')
     for data,metadata in pile_o_data:
-        # merge data dictionary
+      # merge data dictionary
+      if isinstance(data, pd.DataFrame):
+        # Ancillary data loaded via Pandas magic.
+        dataset = metadata['Set_Name']
+        
+        # Metadata
+        if dataset not in new_metadata.keys():
+            # No previous entries for this dataset.  Add the whole thing as-is.
+            new_metadata[dataset] = metadata
+        else:
+            # Compare the new set's metadata with the existing metadata.
+            for meta in [key for key in metadata.keys() if key in set(new_metadata[dataset].keys())]:
+                # Print a notice for any unexpected differences, but don't raise exceptions.
+                if metadata[meta] != new_metadata[dataset][meta]:
+                    logging.warning("Dataset '"+dataset+"' has non-matching metadata between input files. Old: {'"+meta+"': '"+new_metadata[dataset][meta]+"'} -- Now using: {'"+meta+"': '"+metadata[dataset][meta]+"'}")
+            # Update the metadata, overwriting old values if appliciable.
+            new_metadata[dataset].update(metadata)
+        # Data values
+        if dataset not in new_variables.keys():
+            # No previous entries for this dataset.  Add the whole thing as-is.
+            new_variables[dataset] = data
+        else:
+            # Panic and error out if the datasets with identical names don't have the same axes/variables being tracked.
+            if len(new_variables[dataset].keys()) != len(data.columns):
+                logging.error('Failure to merge new data with axes ('+(','.join(data.columns))+') with existing data with axes ('+(','.join((new_variables[dataset].keys())))+')'+'.')
+                raise TypeError('Failure to merge new data with axes ('+(','.join(data.columns))+') with existing data with axes ('+(','.join((new_variables[dataset].keys())))+')'+'.')
+            
+            # Update existing dataset entry with the additional data.
+            new_variables[dataset] = new_variables[dataset].append(data)
+      else:
+        # Direct loaded from CDF.
         for dataset in data.keys():
             if dataset not in new_variables.keys():
                 # No previous entries for this dataset.  Add the whole thing as-is.
@@ -240,6 +276,11 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     if len(new_metadata) == 0:
         logging.warning('No metadata loaded.')
         return
+    
+    # Drop any duplicate entries in the pandas dataframes.
+    for dataset in new_variables.values():
+        if isinstance(dataset, pd.DataFrame):
+            dataset = dataset.drop_duplicates()
     
     logging.info('Loaded variables:')
     for new_var in new_variables.keys():
@@ -290,7 +331,16 @@ def mms_data_time_clip(data_dict, start_time, end_time):
     
     for setname in data_dict.keys():
         dataset = data_dict[setname]
-        timearr = dataset['x']
+        if isinstance(dataset, pd.DataFrame):
+            epochRegex = re.compile('(Epoch|UTC)', re.IGNORECASE)
+            dKeys = [x for x in dataset.keys() if epochRegex.match(x)]
+            if len(dKeys) > 0:
+                timearr = dataset[dKeys[0]].values
+            else:
+                # Hope that the first column is the epoch date/times, despite name issues.
+                timearr = dataset[dataset.keys()[0]].values
+        else:
+            timearr = dataset['x']
         start_index = 0
         end_index = len(timearr)-1
         
@@ -298,10 +348,10 @@ def mms_data_time_clip(data_dict, start_time, end_time):
         if new_start > new_end:
             logging.error('Error: Start time is after end time.')
             continue
-        if (new_start > timearr[-1]) or (new_end < timearr[0]):
+        if (new_start > timearr[len(timearr)-1]) or (new_end < timearr[0]):
             logging.warning('Entire dataset removed by time clipping: "'+setname+'"')
             continue
-        if (new_start <= timearr[0]) and (new_end >= timearr[-1]):
+        if (new_start <= timearr[0]) and (new_end >= timearr[len(timearr)-1]):
             logging.info('Entire dataset included in time clip range: "'+setname+'"')
             continue
         
