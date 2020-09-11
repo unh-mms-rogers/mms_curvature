@@ -101,8 +101,11 @@ Rerr_arr = [None]*numProbes
 for probe in range(1,numProbes+1):
     Rerr_arr[(probe-1)] = get_Rerr(trange=trange, probe=str(probe), datadir="~/data/mms/ancillary/mms"+str(probe)+"/deferr/")[1]
 
-for probe in range(len(Rerr_arr)):
-
+tmpRerr = np.asarray(Rerr_arr)
+outRerr = np.ndarray((numBirds,np.asarray(pos_times).shape[1],4)) 
+for bird in range(numBirds): 
+    for dim in range(4):
+        outRerr[bird,:,dim] = np.interp(pos_times[bird],tmpRerr[bird,:,0], tmpRerr[bird,:,dim])
 
 
 
@@ -140,7 +143,7 @@ for probe in range(numProbes):
     for spatial_dim in range(3):
         for sign in [-1, 1]:
             # Apply uncertainty
-            pos_values[probe][spatial_dim] = np.add(pos_values[probe][spatial_dim], np.multiply(Rerr_arr[probe][spatial_dim+1],sign))
+            pos_values[probe][:,spatial_dim] = np.add(pos_values[probe][:,spatial_dim], np.multiply(outRerr[probe,:,spatial_dim+1],sign))
         
         # Run curvature for current uncertainty
         f_i = Curvature( \
@@ -157,7 +160,7 @@ for probe in range(numProbes):
         r_uncertainty_curve = np.add(np.power(np.subtract(f_i[2],f_0[2]), 2), r_uncertainty_curve)
         
         # Reset changed input
-        pos_values[probe][spatial_dim] = fgmdata['mms'+str(probe+1)+'_fgm_r_gsm_'+str(data_rate)+'_l2']['y'][spatial_dim]
+        pos_values[probe][:,spatial_dim] = fgmdata['mms'+str(probe+1)+'_fgm_r_gsm_'+str(data_rate)+'_l2']['y'][:,spatial_dim]
 
 # magnetometer measurement uncertainties
 for probe in range(numProbes):
@@ -165,7 +168,7 @@ for probe in range(numProbes):
         # I think you said magnetometer uncertainty was +/- 0.1?  If I'm wrong, adjust the following loop values.
         for mag_uncertainty in [-0.1, 0.1]:
             # Apply uncertainty
-            b_values[probe][spatial_dim] = np.add(b_values[probe][spatial_dim], mag_uncertainty)
+            b_values[probe][:,spatial_dim] = np.add(b_values[probe][:,spatial_dim], mag_uncertainty)
         
         # Run curvature for current uncertainty
         f_i = Curvature( \
@@ -181,7 +184,7 @@ for probe in range(numProbes):
         b_uncertainty_curve = np.add(np.power(np.subtract(f_i[2],f_0[2]), 2), b_uncertainty_curve)
         
         # Reset changed input
-        b_values[probe][spatial_dim] = fgmdata['mms'+str(probe+1)+'_fgm_b_gsm_'+str(data_rate)+'_l2']['y'][spatial_dim]
+        b_values[probe][:,spatial_dim] = fgmdata['mms'+str(probe+1)+'_fgm_b_gsm_'+str(data_rate)+'_l2']['y'][:,spatial_dim]
 
 # sum total uncertainties so far
 sum_uncertainty_grad = np.add(r_uncertainty_grad, b_uncertainty_grad)
