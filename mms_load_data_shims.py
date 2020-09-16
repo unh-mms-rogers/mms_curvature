@@ -1078,3 +1078,63 @@ def mms_load_fsm(
             data_rate=data_rate, level=level, instrument=instrument, descriptor=datatype,
             get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
     return data,metadata
+
+
+def mms_load_ancillary(
+        trange=['2015-10-16', '2015-10-17'],
+        probe=None,
+        datatype=None,
+        anc_product='defq',
+        varformat=None,
+        prefix='',
+        suffix='',
+        get_support_data=False,
+        time_clip=False,
+        no_update=False,
+        available=False,
+        notplot=False ):
+    """
+    This function loads DEFQ data and metadata
+    
+    Parameters:
+        trange : list of str
+            time range of interest [starttime, endtime] with the format 
+            'YYYY-MM-DD','YYYY-MM-DD'] or to specify more or less than a day 
+            ['YYYY-MM-DD/hh:mm:ss','YYYY-MM-DD/hh:mm:ss']
+
+        probe : str or list of str
+            list of probes, valid values for MMS probes are ['1','2','3','4']. 
+
+        datatype : str or list of str
+            Valid datatypes for MEC are: ['ephts04d', 'epht89q', 'epht89d']; default is 'ephts04d'
+
+        get_support_data: bool
+            If True, data with an attribute "VAR_TYPE" with a value of "support_data"
+            will be loaded into data tables.  If False, only loads in data with a 
+            "VAR_TYPE" attribute of "data".  Defaults to False.
+
+        time_clip: bool
+            Data will be clipped to the exact trange specified by the trange keyword.
+            
+        varformat: str
+            The file variable formats to load.  Wildcard character
+            "*" is accepted.  By default, all variables are loaded in.
+
+        prefix: str
+            The variable names will be given this prefix.  By default, 
+            no prefix is added.
+
+        suffix: str
+            The variable names will be given this suffix.  By default, 
+            no suffix is added.
+
+            
+    Returns:
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
+
+    """
+    data,metadata = mms_load_data(trange=trange, probe=probe, data_rate=None, level=None, instrument=None,
+            descriptor=datatype, datatype='ancillary', anc_product=anc_product, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
+            time_clip=time_clip, no_update=no_update)
+    return data,metadata

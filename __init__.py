@@ -15,7 +15,9 @@ from .mms_load_data_shims import mms_load_edp
 from .mms_load_data_shims import mms_load_dsp
 from .mms_load_data_shims import mms_load_aspoc
 from .mms_load_data_shims import mms_load_fsm
+from .mms_load_data_shims import mms_load_ancillary
 from .mms_load_data import mms_load_data
+from .load_datafile import load_datafile
 from .mms_curvature import mms_Grad
 from .mms_curvature import mms_Curvature
 from .mms_curvature import mms_CurlB
