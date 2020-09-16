@@ -22,5 +22,5 @@ from .mms_curvature import mms_CurlB
 from .mms_curvature import mms_DivB
 from .utils.mms_bcurl import mms_bcurl
 from .utils.mms_TQF import get_TQF
-from .utils.mms_gyroradius.py import DataLoadMoments
-from .utils.mms_gyroradius.py import CalcRadius
+from .utils.mms_gyroradius import DataLoadMoments
+from .utils.mms_gyroradius import CalcRadius

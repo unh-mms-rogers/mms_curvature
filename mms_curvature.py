@@ -40,10 +40,17 @@ NOTE: Need to update the docstring for mms_Grad after refactoring
 '''
 import numpy as np
 
-def mms_Grad(postimes, posvalues, magtimes, magvalues, normalize=True):
+def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=True):
+    
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
+
+    normalize:  if True normalizes magnetic field vectors before continusing
+                calculation; required for calculating curvature
+
+                if False leaves magnetic field as full vector with magnitude;
+                required for calculating curl and divergence
     '''
     
     # Number of spacecraft in inputs.  Assumed from number of position time arrays.
@@ -55,7 +62,7 @@ def mms_Grad(postimes, posvalues, magtimes, magvalues, normalize=True):
     if len(magvalues) != numBirds: raise ValueError('Number of magnetic field value arrays does not match number of position time arrays!')
 
 
-    bn = [None]*len(numBirds)
+    bn = [None]*numBirds
     if normalize:
         # normalize magnetic fields
         for bird in range(numBirds):
@@ -320,7 +327,7 @@ def mms_Curvature(grad, bm):
     # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
     # The below gives identical results as, but is much more efficient than: 
     #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])
-    curve_Harvey = np.einsum('...ij,...j', grad_Harvey, bm)
+    curve_Harvey = np.einsum('...ij,...j', grad, bm)
     
     return curve_Harvey
 
