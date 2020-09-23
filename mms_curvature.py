@@ -326,7 +326,7 @@ def mms_Curvature(grad, bm):
     # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
     # The below gives identical results as, but is much more efficient than: 
     #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])
-    curve_Harvey = np.einsum('...ij,...j', grad, bm)
+    curve_Harvey = np.einsum('...ij,...i', grad, bm)
     
     return curve_Harvey
 
