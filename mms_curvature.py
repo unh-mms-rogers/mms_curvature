@@ -261,11 +261,10 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     tmpHarv[2] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-2,1)),np.square(numBirds))
     
     # Constructs the gradient matrix for each timestep from the diagonals calculated in the above steps.
-    grad_Harvey = np.transpose( \
+    grad_Harvey = \
                   np.einsum('...i,...ij->...ij',tmpHarv[0],np.identity(3)) + \
                   np.einsum('...i,...ij->...ij',tmpHarv[1],(np.roll(np.identity(3),-1,axis=0))) + \
-                  np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0))) \
-                  , (0,2,1)) # Due to all the matrix rolling shenanigans leading up to this, we need to transpose the matrix from each timestep.
+                  np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0)))
 
     ## List of references for how numpy.einsum operates:
     # 
