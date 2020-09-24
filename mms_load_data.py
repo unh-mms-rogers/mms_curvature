@@ -225,7 +225,9 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
             for meta in [key for key in metadata.keys() if key in set(new_metadata[dataset].keys())]:
                 # Print a notice for any unexpected differences, but don't raise exceptions.
                 if metadata[meta] != new_metadata[dataset][meta]:
-                    logging.warning("Dataset '"+dataset+"' has non-matching metadata between input files. Old: {'"+meta+"': '"+new_metadata[dataset][meta]+"'} -- Now using: {'"+meta+"': '"+metadata[dataset][meta]+"'}")
+                    #Ancillary data is wierd.  Just append any new metadata to the existing metadata field.
+                    metadata[meta] = str(metadata[meta]) + ', ' +str(new_metadata[dataset][meta])
+                    #logging.warning("Dataset '"+dataset+"' has non-matching metadata between input files. Old: {'"+meta+"': '"+new_metadata[dataset][meta]+"'} -- Now using: {'"+meta+"': '"+metadata[dataset][meta]+"'}")
             # Update the metadata, overwriting old values if appliciable.
             new_metadata[dataset].update(metadata)
         # Data values

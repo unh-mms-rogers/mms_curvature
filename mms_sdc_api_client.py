@@ -460,8 +460,8 @@ class MMS_SDC_API_CLIENT:
         #   [3]: End_date in '%Y%j' format (as above)
         #   extension: Version
         
-        path = os.path.join(self.data_root, 'ancillary', *parts[0:-2], filename)
-        
+        path = (os.path.join(self.data_root, 'ancillary', *parts[0:-2])).lower()
+        path = os.path.join(path, filename)
         
         return path
     
