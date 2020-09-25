@@ -3,10 +3,10 @@ import time
 import numpy as np
 import pandas as pd
 from mms_curvature.mms_curvature import mms_Grad, mms_Curvature, mms_CurlB, mms_DivB
-from mms_curvature.mms_load_data_shims import mms_load_fgm
+from mms_curvature.mms_load_data_shims import mms_load_fgm, mms_load_ancillary
 from mms_curvature.utils.mms_gyroradius import DataLoadMoments, CalcRadius
 # from mms_curvature.utils.mms_TQF import get_TQF
-from mms_curvature.utils.mms_Rerr import get_Rerr
+#from mms_curvature.utils.mms_Rerr import get_Rerr
 
 # Minimum verbosity for status; time-keeping
 timeStart =  time.strftime("%H:%M:%S", time.localtime())
@@ -177,9 +177,10 @@ print("Time FGM Loaded: ", fgm_load_done_time)
 
 # Get DEFERR data fro positional uncertainty
 print("Collecting positional uncertainties...")
+deferr_in = mms_load_ancillary(probe=['1','2','3','4'], anc_product='deferr', trange=trange, time_clip=True)
 Rerr_arr = [None]*numProbes
 for probe in range(1,numProbes+1):
-    Rerr_arr[(probe-1)] = get_Rerr(trange=trange, probe=str(probe), datadir="~/data/mms/ancillary/mms"+str(probe)+"/deferr/")[1]
+    Rerr_arr[(probe-1)] = (deferr_in[0]["MMS"+str(probe)+"_DEFERR"]).to_numpy()
 # Returns positional uncertainty in METERS
 
 
