@@ -148,12 +148,26 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     ## Per equation (14.10) of "Analysis Methods for Multi-Spacecraft Data", sum of all k_a = 0.  Skip the heavy calculations for our relative origin.
     k[0] = k[0]-(k[3]+k[2]+k[1])
 
+    # Per equation (14.15) of "Analysis Methods for Multi-Spacecraft Data", estimated gradient should be sum by bird of product of barcentre reciprical and transpose(B-vector)
+    # np.reshape is required to permit numpy to orient the matrices for multiplication.
+    # Since we need to add this empty dimension anyway, we use it to perform the required transpose operation manually.
+    gradB = np.add.reduce(np.matmul(
+                                    k.reshape(k.shape+(1,)),
+                                    datab.reshape(datab.shape[:-1]+(1, datab.shape[-1]))
+                                    ))
+    
     # Per reference implementation, curlB is the sum across birds of each bird's barycentre reciprical vector cross B-vector, for each timestep
     curlB = np.add.reduce(np.cross(k,datab))
 
     # Per reference implementation, divB is the sum across birds of the dot product for each bird's barycentre reciprical vector and B-vector, for each timestep.
+    #divB = np.einsum('ij,ij->i',datab[0], k[0])+np.einsum('ij,ij->i',datab[1], k[1])+np.einsum('ij,ij->i',datab[2], k[2])+np.einsum('ij,ij->i',datab[3], k[3])
     ## Replacing this with a more efficient implementation.
-    divB = np.einsum('ij,ij->i',datab[0], k[0])+np.einsum('ij,ij->i',datab[1], k[1])+np.einsum('ij,ij->i',datab[2], k[2])+np.einsum('ij,ij->i',datab[3], k[3])
+    #The reshape at the end is largely cosmetic, as the output is otherwise shape: (timestep, 1, 1)
+    divB = np.add.reduce(np.matmul(
+                                    k.reshape(k.shape[:-1]+(1, k.shape[-1])),
+                                    datab.reshape(datab.shape+(1,))
+                                    )).reshape((datab.shape[1],))
+
 
     jvec = 1e-12*curlB/m0
     jmag = np.sqrt(np.square(jvec[:,0])+np.square(jvec[:,1])+np.square(jvec[:,2]))
@@ -162,6 +176,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     # create the output variables
     out_vars['timeseries' + suffix ] = timeseries
     out_vars['barcentre' + suffix ] = barycentre
+    out_vars['gradB' + suffix ] = gradB
     out_vars['curlB' + suffix ] = curlB
     out_vars['divB' + suffix  ] = divB
     out_vars['jvec' + suffix] = jvec
