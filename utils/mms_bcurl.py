@@ -163,11 +163,23 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     #divB = np.einsum('ij,ij->i',datab[0], k[0])+np.einsum('ij,ij->i',datab[1], k[1])+np.einsum('ij,ij->i',datab[2], k[2])+np.einsum('ij,ij->i',datab[3], k[3])
     ## Replacing this with a more efficient implementation.
     #The reshape at the end is largely cosmetic, as the output is otherwise shape: (timestep, 1, 1)
-    divB = np.add.reduce(np.matmul(
+    divB_diag = np.matmul(
                                     k.reshape(k.shape[:-1]+(1, k.shape[-1])),
                                     datab.reshape(datab.shape+(1,))
-                                    )).reshape((datab.shape[1],))
+                                    )
+    divB = np.add.reduce(divB_diag).reshape((datab.shape[1],))
 
+    ## Sanity checks
+    LevCiv3 = np.zeros((3,3,3))
+    LevCiv3[0,1,2] = LevCiv3[1,2,0] = LevCiv3[2,0,1] = 1
+    LevCiv3[0,2,1] = LevCiv3[2,1,0] = LevCiv3[1,0,2] = -1
+    assert np.allclose(divB,
+                       np.trace(gradB, axis1=-2, axis2=-1),
+                       atol=0), 'Calculated divergence differs from trace of calculated gradient!'
+    assert np.allclose(curlB,
+                       np.einsum('ijk,...jk', LevCiv3, gradB),
+                       atol=0), 'Calculated curl differs from Levi-Civita permutated gradient!'
+    ## End of sanity checks
 
     jvec = 1e-12*curlB/m0
     jmag = np.sqrt(np.square(jvec[:,0])+np.square(jvec[:,1])+np.square(jvec[:,2]))
@@ -179,6 +191,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     out_vars['gradB' + suffix ] = gradB
     out_vars['curlB' + suffix ] = curlB
     out_vars['divB' + suffix  ] = divB
+    out_vars['divB_grad' + suffix  ] = divB_grad
     out_vars['jvec' + suffix] = jvec
     out_vars['jmag' + suffix] = jmag
 
