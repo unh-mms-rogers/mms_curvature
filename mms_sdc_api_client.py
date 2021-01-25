@@ -181,7 +181,7 @@ class MMS_SDC_API_CLIENT:
                 if r.ok:
                     break
                 else:
-                    print('Incorrect username or password. %d tries remaining.' % maxAttempts-nAttemtps)
+                    print('Incorrect username or password. ' + str(maxAttempts-nAttempts) + ' tries remaining.')
                     nAttempts += 1
             
             # Failed log-in
