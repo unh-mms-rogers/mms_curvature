@@ -146,6 +146,7 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     
     # Calculate volumetric tensor (Harvey, Ch 12.4, Eq 12.23, from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.)
     
+    ## Section:  old, not-actually correct code
     #Rvol = np.ndarray((t_master.shape[0], 3, 3))
     #for i in range(t_master.shape[0]):
     #    #rvol_step = np.zeros([3,3])    # Stepwise method gives same result as explicit below
@@ -156,17 +157,33 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     #    #Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))     # give same result as stepwise above
     
     # Intermediate variable to hold the self-outer-product of rm at each timestep
-    rmOuter = np.einsum('...i,...j->...ij',rm,rm)  # explicit form 'outer product' use of EinSum, broadcast across leading dimensions
+    ##rmOuter = np.einsum('...i,...j->...ij',rm,rm)  # explicit form 'outer product' use of EinSum, broadcast across leading dimensions
     
     # Intermediate variable to hold the self-outer-product of rarr, per bird, at each timestep
-    rarrOuter = np.einsum('...i,...j->...ij',rarr,rarr)  # Same as line above
+    ##rarrOuter = np.einsum('...i,...j->...ij',rarr,rarr)  # Same as line above
     
-    Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise Rvol code commented out above.
+    ##Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise Rvol code commented out above.
     # Brief description of operations in above line:
     #  All of the following occur for each timestep...
     #  1)  Collapse the self-outer-products of rarr by summing across all spacecraft
     #  2)  From above result, subtract the self-outer-product of rm (position of mesocenter)
     #  3)  Divide resultant array from above step by the number of spacecraft
+    
+    ## End Section:  old, not-actually correct code
+    
+    ## Explicit equation construction from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.
+    rrarr = np.matmul(rarr[:,:,:,None], rarr[:,:,None,:]) # the r_a*r_a^T term from (12.23)
+    rmrm = np.matmul(rm[:,:,None], rm[:,None,:])  # the r_b*r_b^T term from (12.23)
+    
+    # This just expands the r_b*r_b^T term to match the shape of rrar above for easy broadcast of the subtraction and summation
+    rmrm_expanded = np.repeat(rmrm[None,:,:,:], repeats=rrarr.shape[0], axis=0)
+    
+    # partial_R is every term inside the summation of (12.23)
+    #  ie.  R = 1/N * sum(n=1..numBirds, partial_R[n]
+    partial_R = rrarr - rmrm_expanded
+    
+    # results is R as defined by (12.23) for all time steps, with shape (timesteps, 3, 3)
+    Rvol = np.divide(np.add.reduce(partial_R),partial_R.shape[0])
     
     # Pre-calculate the inverse array of Rvol here to avoid needless recalculation later.
     Rinv = np.linalg.inv(Rvol)
