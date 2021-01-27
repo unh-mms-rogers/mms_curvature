@@ -381,7 +381,8 @@ def mms_DivB(Grad):
               used for the input Grad array.
     '''
 
-    DivB = np.einsum('...ii', Grad)   # Equivalent to taking the trace of grad(B) at each time step
+    #DivB = np.einsum('...ii', Grad)   # Equivalent to taking the trace of grad(B) at each time step
+    DivB = np.trace(np.swapaxes(Grad, 1,2), axis1=1, axis2=2)   
 
     return DivB
     

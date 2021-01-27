@@ -80,7 +80,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     
     # initialize master time sequence by trimming time from last S/C to start (mastersc)
     while fields[mastersc]['x'][tend_i] > tend: tend_i -= 1
-    timeseries = fields[mastersc]['x'][0:(tend_i+1)]
+    timeseries = np.array(fields[mastersc]['x'][0:(tend_i+1)])
         
     out_vars = {}
     
