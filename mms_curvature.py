@@ -65,8 +65,13 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     bn = [None]*numBirds
     if normalize:
         # normalize magnetic fields
-        for bird in range(numBirds):
-            bn[bird] = magvalues[bird][:,0:3]/magvalues[bird][:,3,np.newaxis]
+        if magvalues[0].shape[-1] == 4:   # tests for |B| given as 4th vector in data
+            for bird in range(numBirds):
+                bn[bird] = magvalues[bird][:,0:3]/magvalues[bird][:,3,np.newaxis]
+        else: 
+            for bird in range(numBirds):  # else calculates |B| from the 3-vector given
+                bn[bird] = magvalues[bird]/np.linalg.norm(magvalues[bird], axis=1).reshape(magvalues[bird].shape[0], 1)
+
     else:
         # use magnetic fields without normalizing
         for bird in range(numBirds):
@@ -99,8 +104,12 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
 
     # Calculate average |B| for export
     Bvals = [None]*numBirds
-    for bird in range(numBirds):
-        Bvals[bird] = np.interp(t_master, magtimes[bird], magvalues[bird][:,3])
+    if magvalues[0].shape[-1] == 4:    # tests for |B| given as 4th vector in data
+        for bird in range(numBirds):
+            Bvals[bird] = np.interp(t_master, magtimes[bird], magvalues[bird][:,3])
+    else:
+        for bird in range(numBirds):   # else calculates |B| from the 3-vector given
+            Bvals[bird] = np.interp(t_master, magtimes[bird], np.linalg.norm(magvalues[bird], axis=1))
     bmag = np.average(Bvals, axis=0)
 
 
