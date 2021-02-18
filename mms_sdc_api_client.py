@@ -7,7 +7,7 @@
 import glob
 import os
 import requests
-from p_tqdm import p_map
+from concurrent.futures import ThreadPoolExecutor
 import datetime as dt
 from urllib.parse import parse_qs
 from . import mms_utils
@@ -263,8 +263,8 @@ class MMS_SDC_API_CLIENT:
             
             # Download files individually, in parallel
             try:
-                # newfiles = p_map(self.DownloadFile,file_info['files'], url)
-                newfiles = p_map(partial(self.DownloadFile, url=url), file_info['files'])
+                with ThreadPoolExecutor() as p:
+                    newfiles = p.map(partial(self.DownloadFile, url=url), file_info['files'])
             except:
                 for key in state:
                     self.files = None
