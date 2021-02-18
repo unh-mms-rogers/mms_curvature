@@ -38,7 +38,9 @@ import requests
 import logging
 import numpy as np
 from .load_datafile import load_datafile
-from p_tqdm import p_map
+from concurrent.futures import ThreadPoolExecutor
+#from multiprocessing import Pool
+#from p_tqdm import p_map
 from functools import partial
 import pandas as pd
 import re
@@ -205,8 +207,10 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
     # This attempts to load all requested cdf files into memory concurrently, using as many threads as the system permits.
     # The load_cdf function returns a tuple of (data, metadata), so pile_o_data will be a list of these tuples.
     # pile_o_data = p_map(load_cdf, out_files, varformat, get_support_data, prefix, suffix, center_measurement)
-    pile_o_data = p_map(partial(load_datafile, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement), out_files)
+    #pile_o_data = p_map(partial(load_datafile, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement), out_files)
     ##pile_o_data = p_map(partial(load_cdf, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement), out_files)
+    with ThreadPoolExecutor() as p:
+        pile_o_data = p.map(partial(load_datafile, varformat=varformat, get_support_data=get_support_data, prefix=prefix, suffix=suffix, center_measurement=center_measurement), out_files)
 
     # Merge matching variable names across loaded files.
     logging.info('Stitching together the data...')
