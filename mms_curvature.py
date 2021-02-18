@@ -185,14 +185,15 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     rmrm = np.matmul(rm[:,:,None], rm[:,None,:])  # the r_b*r_b^T term from (12.23)
     
     # This just expands the r_b*r_b^T term to match the shape of rrar above for easy broadcast of the subtraction and summation
-    rmrm_expanded = np.repeat(rmrm[None,:,:,:], repeats=rrarr.shape[0], axis=0)
+    # rmrm_expanded = np.repeat(rmrm[None,:,:,:], repeats=rrarr.shape[0], axis=0)
     
     # partial_R is every term inside the summation of (12.23)
     #  ie.  R = 1/N * sum(n=1..numBirds, partial_R[n]
-    partial_R = rrarr - rmrm_expanded
+    # partial_R = rrarr - rmrm_expanded
     
     # results is R as defined by (12.23) for all time steps, with shape (timesteps, 3, 3)
-    Rvol = np.divide(np.add.reduce(partial_R),partial_R.shape[0])
+    Rvol = np.subtract(np.divide(np.add.reduce(rrarr, axis=0), rarr.shape[0]), rmrm) # more efficient - AJR
+    # Rvol = np.divide(np.add.reduce(partial_R),partial_R.shape[0])
     
     # Pre-calculate the inverse array of Rvol here to avoid needless recalculation later.
     Rinv = np.linalg.inv(Rvol)
@@ -222,11 +223,16 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     
     # Vectorized matrix operations to calculate the above.  Saves a lot of compute time at the expense of a little memory.
     tmpR = np.repeat(rarr[np.newaxis,:,:,:],rarr.shape[0],axis=0)  # Stretch the array to be 2-D instead of 1-D for the sats.  Required for next operation.
-    triR = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpR,axes=(1,0,2,3)) - tmpR, -1), -1))  # This produces a triangular matrix of dR=D_a - D_b, for all [a != b]
-    
+    # triR = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpR,axes=(1,0,2,3)) - tmpR, -1), -1))  # This produces a triangular matrix of dR=D_a - D_b, for all [a != b]
+    diffR = np.subtract(np.moveaxis(tmpR, [0,1], [1,0]), tmpR)
+    triR = np.moveaxis(np.triu(np.moveaxis(diffR, [0,1], [-2,-1]), 1), [-2,-1], [0,1]) # updates from depreciating 'rollaxis' and makes a bit more readable what's happening -AJR
+
     tmpB = np.repeat(barr[np.newaxis,:,:,:],barr.shape[0],axis=0)  # Same as above, but with B instead
-    triB = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpB,axes=(1,0,2,3)) - tmpB, -1), -1)) # Again, dB=B_a - B_b, for all [a != b]
-    
+    # triB = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpB,axes=(1,0,2,3)) - tmpB, -1), -1)) # Again, dB=B_a - B_b, for all [a != b]
+    diffB = np.subtract(np.moveaxis(tmpB, [0,1], [1,0]), tmpB)
+    triB = np.moveaxis(np.triu(np.moveaxis(diffB, [0,1], [-2,-1]), 1), [-2,-1], [0,1])
+
+
     #Example of effect of above operations:
     # Each b_i below is a 3-vector
     # 
@@ -238,6 +244,7 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     #  [b_1, b_2, b_3, b_4]]
     # 
     # Line 250, two steps, first array is intermediate form (again, at each timestep):
+    # diffB = 
     # [[b_1-b_1,  b_1-b_2,  b_1-b_3, b_1-b_4],
     #  [b_2-b_1,  b_2-b_2,  b_2-b_3, b_2-b_4],
     #  [b_3-b_1,  b_3-b_2,  b_3-b_3, b_3-b_4],
@@ -267,30 +274,41 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     #            [dB_z*dR_x, dB_z*dR_y, dB_z*dR_z]]
     #
     
-    # Calculate the partial components for dbdr
-    dtemp = np.ndarray((3, t_master.shape[0], 3))
-    dtemp[0] = np.einsum('...ab,...ab',triB,triR) #This gets us the diagonals of dbdr for B_i and R_i (eg, both x components, both y, ...)
-    dtemp[1] = np.einsum('...ab,...ab',triB,np.roll(triR,-1,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+1)  (eg, B_x * R_y, ...)
-    dtemp[2] = np.einsum('...ab,...ab',triB,np.roll(triR,-2,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+2)  (eg, B_y * R_x, ...)
-    
-    # Constructs dbdr matrix for each timestep, where dbdr[i,j] will return the relavant dB_i*dR_j resultant vector
-    dbdr = np.einsum('...i,...ij->...ij',dtemp[0],np.identity(3)) + \
-            np.einsum('...i,...ij->...ij',dtemp[1],(np.roll(np.identity(3),-1,axis=0))) + \
-            np.einsum('...i,...ij->...ij',dtemp[2],(np.roll(np.identity(3),-2,axis=0)))
-    
-    # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there's some simpler way to calculate this, but I haven't found it yet.
-    # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
+    dbdr = np.add.reduce(np.einsum('...i,...j->...ij', triB, triR), axis=(0,1))    # creates a [time, 3x3 array] array
+    grad_Harvey = (1/rarr.shape[0])**2 * np.matmul(dbdr, Rinv)  # same as np.einsum('...ij,...jk->ik', dbdr, Rinv)
 
-    tmpHarv = np.ndarray((3, t_master.shape[0], 3))
-    tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
-    tmpHarv[1] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-1,1)),np.square(numBirds))
-    tmpHarv[2] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-2,1)),np.square(numBirds))
+    # The calculated gradient (B_i/d_j) is transposed from the accepted index order for the gradient (d_i B_j) so last thing we do is swap the last two axis
+    grad_Harvey = np.moveaxis(grad_Harvey, [-2,-1], [-1,-2])
+
+    # The above is certainly more readable than the version below and (fingers crossed) clears up an inverted vector issue in the code following - AJR
+
+
     
-    # Constructs the gradient matrix for each timestep from the diagonals calculated in the above steps.
-    grad_Harvey = \
-                  np.einsum('...i,...ij->...ij',tmpHarv[0],np.identity(3)) + \
-                  np.einsum('...i,...ij->...ij',tmpHarv[1],(np.roll(np.identity(3),-1,axis=0))) + \
-                  np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0)))
+
+    ### # Calculate the partial components for dbdr
+    ### dtemp = np.ndarray((3, t_master.shape[0], 3))
+    ### dtemp[0] = np.einsum('...ab,...ab',triB,triR) #This gets us the diagonals of dbdr for B_i and R_i (eg, both x components, both y, ...)
+    ### dtemp[1] = np.einsum('...ab,...ab',triB,np.roll(triR,-1,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+1)  (eg, B_x * R_y, ...)
+    ### dtemp[2] = np.einsum('...ab,...ab',triB,np.roll(triR,-2,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+2)  (eg, B_y * R_x, ...)
+    ### 
+    ### # Constructs dbdr matrix for each timestep, where dbdr[i,j] will return the relavant dB_i*dR_j resultant vector
+    ### dbdr = np.einsum('...i,...ij->...ij',dtemp[0],np.identity(3)) + \
+    ###         np.einsum('...i,...ij->...ij',dtemp[1],(np.roll(np.identity(3),-1,axis=0))) + \
+    ###         np.einsum('...i,...ij->...ij',dtemp[2],(np.roll(np.identity(3),-2,axis=0)))
+    ### 
+    ### # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there's some simpler way to calculate this, but I haven't found it yet.
+    ### # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
+
+    ### tmpHarv = np.ndarray((3, t_master.shape[0], 3))
+    ### tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
+    ### tmpHarv[1] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-1,1)),np.square(numBirds))
+    ### tmpHarv[2] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-2,1)),np.square(numBirds))
+    ### 
+    ### # Constructs the gradient matrix for each timestep from the diagonals calculated in the above steps.
+    ### grad_Harvey = \
+    ###               np.einsum('...i,...ij->...ij',tmpHarv[0],np.identity(3)) + \
+    ###               np.einsum('...i,...ij->...ij',tmpHarv[1],(np.roll(np.identity(3),-1,axis=0))) + \
+    ###               np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0)))
 
     ## List of references for how numpy.einsum operates:
     # 
