@@ -5,6 +5,9 @@
 # Released under the MIT license.
 
 import numpy as np
+
+m0 = 4.0*np.pi*1e-7 #  permeability of free space in SI units (H/m)
+
 #from pytplot import get_data, store_data, options
 #from pyspedas import tinterpol
 
@@ -27,7 +30,7 @@ import numpy as np
 #
 
 #def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
-def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=False):
+def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=False, suffix=''):
     
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
@@ -53,6 +56,9 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
 
                 if False leaves magnetic field as full vector with magnitude;
                 required for calculating curl and divergence
+
+    suffix:     string suffix to place on output dictionary key names, defaults to none
+
     Notes:
         The input B-field data and position data are required to be in 
         orthogonal Cartesian coordinates such as GSE or GSM and must be the 
@@ -145,6 +151,8 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
     # ie.  rarr[<spacecraft>, <timestep_index>, <cartesian_component_of_vector>]
     # eg.  Y-position of mms4 at first time step:  rarr[3,0,1]
 
+    rm = np.divide(np.add.reduce(rarr),rarr.shape[0]) # timeseries position vector of the barycenter
+    bm = np.divide(np.add.reduce(barr),barr.shape[0]) # timeseries averaged magnetic field vector (barycentric B-vector)
 
 
     # Calculate the positional offset of each bird, relative to mms1, for each timestep
@@ -223,15 +231,18 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
 
 
     # create the output variables
+    out_vars = {}
+
     out_vars['t_master' + suffix ] = t_master
-    out_vars['barcentre' + suffix ] = barycentre
+    out_vars['barcentre' + suffix ] = rm
     out_vars['gradB' + suffix ] = gradB
     out_vars['curlB' + suffix ] = curlB
     out_vars['divB' + suffix  ] = divB
     #out_vars['divB_grad' + suffix  ] = divB_grad
     out_vars['jvec' + suffix] = jvec
     out_vars['jmag' + suffix] = jmag
-    out_vars['baryB' + suffix] = baryB
+    out_vars['baryB' + suffix] = bm
+    out_vars['magB' + suffix] = bmag
 
     # Preserving old 'options' below, mostly as a reference for units.  Just in case.
     #
