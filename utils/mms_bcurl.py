@@ -26,7 +26,7 @@ import numpy as np
 #curl_dataset = mms_bcurl(fields=fieldList, positions=positionList)
 #
 
-def mms_bcurl(fields=None, positions=None, suffix=''):
+def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
     """
     This function applies the curlometer technique to MMS FGM data
     
@@ -45,13 +45,20 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
             The output variable names will be given this suffix.  By default, 
             no suffix is added.
 
+        norm : Boolean
+            if True then magnetic field data will be normalized and
+            the gradient will be taken of the magnetic field unit
+            vector.  This is necessary for calculating the magnetic
+            field line curvature
+
     Notes:
         The input B-field data and position data are required to be in 
         orthogonal Cartesian coordinates such as GSE or GSM and must be the 
         coordinate system for all inputs.  Output will be in same coordinate 
         system as inputs.
  
-        Based on the original mms_curl, written in IDL, by Jonathan Eastwood 
+        Based on the original mms_curl, written in IDL, by Jonathan Eastwood and 
+        Malcolm Dunlop
 
         For more info on this method, see:
           Chanteur, G., Spatial Interpolation for Four Spacecraft: Theory, 
@@ -94,6 +101,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
         datab[bird,:,0] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,0])
         datab[bird,:,1] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,1])
         datab[bird,:,2] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,2])
+        if norm: datab[bird,:,:] = np.divide(datab[bird,:,:], np.linalg.norm(datab[bird,:,:], axis=1).reshape(datab.shape[1],1))   # provides normalized b vectors
 
     # interpolate the definitive ephemeris onto the magnetic field timeseries
     # should be in GSE coordinates
@@ -107,6 +115,7 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
 
     # Calculate barycentre for each timestep
     barycentre = np.divide(np.add.reduce(datapos), datapos.shape[0])
+    baryB = np.divide(np.add.reduce(datab), datab.shape[0])
 
 
 
@@ -191,9 +200,10 @@ def mms_bcurl(fields=None, positions=None, suffix=''):
     out_vars['gradB' + suffix ] = gradB
     out_vars['curlB' + suffix ] = curlB
     out_vars['divB' + suffix  ] = divB
-    out_vars['divB_grad' + suffix  ] = divB_grad
+    #out_vars['divB_grad' + suffix  ] = divB_grad
     out_vars['jvec' + suffix] = jvec
     out_vars['jmag' + suffix] = jmag
+    out_vars['baryB' + suffix] = baryB
 
     # Preserving old 'options' below, mostly as a reference for units.  Just in case.
     #
