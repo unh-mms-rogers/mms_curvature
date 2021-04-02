@@ -46,6 +46,21 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
 
+    Input parameters-
+    NOTE:   order of each list is assumed to be consistent, i.e. that MMS1 data 
+            is always in the [0] index of each list while MMS4 data is always 
+            in the [3] index and so on.  While order is arbitrary, it must be 
+            consistent for all of the following lists.
+
+    postimes:   list of numpy arrays with the unix timestamp of each position vector
+
+    posvalues:  list of numpy arrays with the position vector of a spacecraft
+
+    magtimes:   list of numpy arrays with unix timestamp of each magnetic field vector
+
+    magvalues:  list of numpy arrays with magnetic field vector measured by a
+                spacecraft
+
     normalize:  if True normalizes magnetic field vectors before continusing
                 calculation; required for calculating curvature
 

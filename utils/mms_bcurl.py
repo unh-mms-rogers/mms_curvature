@@ -26,31 +26,33 @@ import numpy as np
 #curl_dataset = mms_bcurl(fields=fieldList, positions=positionList)
 #
 
-def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
-    """
-    This function applies the curlometer technique to MMS FGM data
+#def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
+def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=False):
     
-    Parameters:
-        fields : list of dict
-            List of variables containing the B-field for each spacecraft 
-            (in Cartesian coordinates, e.g. GSE or GSM)
-            Each item in list is expected to be a data dictionary
+    '''
+    Calculates spacial gradient and curvature vector of the magnetic field.  
+    Returns those and the master time (interpolated from FGM data) as numpy arrays
 
-        positions : list of dict
-            List of variables containing the S/C position vectors for 
-            each spacecraft (also in same coordinates as 'fields') 
-            Each item in list is expected to be a data dictionary
+    Input parameters-
+    NOTE:   order of each list is assumed to be consistent, i.e. that MMS1 data 
+            is always in the [0] index of each list while MMS4 data is always 
+            in the [3] index and so on.  While order is arbitrary, it must be 
+            consistent for all of the following lists.
 
-        suffix: str
-            The output variable names will be given this suffix.  By default, 
-            no suffix is added.
+    postimes:   list of numpy arrays with the unix timestamp of each position vector
 
-        norm : Boolean
-            if True then magnetic field data will be normalized and
-            the gradient will be taken of the magnetic field unit
-            vector.  This is necessary for calculating the magnetic
-            field line curvature
+    posvalues:  list of numpy arrays with the position vector of a spacecraft
 
+    magtimes:   list of numpy arrays with unix timestamp of each magnetic field vector
+
+    magvalues:  list of numpy arrays with magnetic field vector measured by a
+                spacecraft
+
+    normalize:  if True normalizes magnetic field vectors before continusing
+                calculation; required for calculating curvature
+
+                if False leaves magnetic field as full vector with magnitude;
+                required for calculating curl and divergence
     Notes:
         The input B-field data and position data are required to be in 
         orthogonal Cartesian coordinates such as GSE or GSM and must be the 
@@ -67,66 +69,92 @@ def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
 
     Returns:
         Dictionary of variables calculated
-
-    """
-
-    if fields == None or positions == None:
-        print('Error: B-field [fields] and spacecraft position [positions] keywords required.')
-        return
-
-    if len(fields) != 4 or len(positions) != 4:
-        print('Error, fields and positions keywords should be specified as 4-element arrays containing the variable name for the field and position variables')
-        return
+    '''
     
-    ## The following code to determine the timeseries to use was adapted from mms_curvature.py
+    # Number of spacecraft in inputs.  Assumed from number of position time arrays.
+    numBirds = len(postimes)
+
+    # Sanity check.  Throw an error if number of time arrays and data arrays don't all match.
+    if len(posvalues) != numBirds: raise ValueError('Number of position value arrays does not match number of position time arrays!')
+    if len(magtimes) != numBirds: raise ValueError('Number of magnetic field time arrays does not match number of position time arrays!')
+    if len(magvalues) != numBirds: raise ValueError('Number of magnetic field value arrays does not match number of position time arrays!')
+
+
+    bn = [None]*numBirds
+    if normalize:
+        # normalize magnetic fields
+        if magvalues[0].shape[-1] == 4:   # tests for |B| given as 4th vector in data
+            for bird in range(numBirds):
+                bn[bird] = magvalues[bird][:,0:3]/magvalues[bird][:,3,np.newaxis]
+        else: 
+            for bird in range(numBirds):  # else calculates |B| from the 3-vector given
+                bn[bird] = magvalues[bird]/np.linalg.norm(magvalues[bird], axis=1).reshape(magvalues[bird].shape[0], 1)
+
+    else:
+        # use magnetic fields without normalizing
+        for bird in range(numBirds):
+            bn[bird] = magvalues[bird][:,0:3]
+
     # find probe with latest beginning point for magnetic field data
-    mastersc = np.argmax([fields[0]['x'][0], fields[1]['x'][0], fields[2]['x'][0], fields[3]['x'][0]])
+    firsttimes = []
+    lasttimes = []
+    for bird in range(numBirds):
+        firsttimes.append(magtimes[bird][0])
+        lasttimes.append(magtimes[bird][-1])
+    mastersc = np.argmax(firsttimes)
     # find earliest end time for all space craft in range
-    tend = min(fields[0]['x'][-1], fields[1]['x'][-1], fields[2]['x'][-1], fields[3]['x'][-1])
-    tend_i = len(fields[mastersc]['x'])-1
+    tend = min(lasttimes)
+    tend_i = 0  # initialize counting index for finding ending index for master S/C
     
     # initialize master time sequence by trimming time from last S/C to start (mastersc)
-    while fields[mastersc]['x'][tend_i] > tend: tend_i -= 1
-    timeseries = np.array(fields[mastersc]['x'][0:(tend_i+1)])
-        
-    out_vars = {}
+    while magtimes[mastersc][tend_i] < tend: tend_i += 1
+    t_master = magtimes[mastersc][0:(tend_i+1)]
     
-    # *********************************************************
-    # Magnetic Field
-    # *********************************************************
-    # interpolate the magnetic field data all onto the same timeline:
-    # should be in GSE coordinates
-    datab = np.ndarray((4,timeseries.shape[0],3))
-    for bird in range(4):
-        datab[bird,:,0] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,0])
-        datab[bird,:,1] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,1])
-        datab[bird,:,2] = np.interp(timeseries, fields[bird]['x'], fields[bird]['y'][:,2])
-        if norm: datab[bird,:,:] = np.divide(datab[bird,:,:], np.linalg.norm(datab[bird,:,:], axis=1).reshape(datab.shape[1],1))   # provides normalized b vectors
+    # master mag field data arr, with interpolated values
+    # Magnetic field data, interpolated to the previously determined master time sequence
+    barr=np.ndarray((numBirds,t_master.shape[0],3))
+    for bird in range(numBirds):
+        barr[bird,:,0] = np.interp(t_master, magtimes[bird], bn[bird][:,0])
+        barr[bird,:,1] = np.interp(t_master, magtimes[bird], bn[bird][:,1])
+        barr[bird,:,2] = np.interp(t_master, magtimes[bird], bn[bird][:,2])
+    
 
-    # interpolate the definitive ephemeris onto the magnetic field timeseries
-    # should be in GSE coordinates
-    datapos = np.ndarray((4,timeseries.shape[0],3))
-    for bird in range(4):
-        datapos[bird,:,0] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,0])
-        datapos[bird,:,1] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,1])
-        datapos[bird,:,2] = np.interp(timeseries, positions[bird]['x'], positions[bird]['y'][:,2])
 
-    m0 = 4.0*np.pi*1e-7 #  permeability of free space in SI units (H/m)
+    # Calculate average |B| for export
+    Bvals = [None]*numBirds
+    if magvalues[0].shape[-1] == 4:    # tests for |B| given as 4th vector in data
+        for bird in range(numBirds):
+            Bvals[bird] = np.interp(t_master, magtimes[bird], magvalues[bird][:,3])
+    else:
+        for bird in range(numBirds):   # else calculates |B| from the 3-vector given
+            Bvals[bird] = np.interp(t_master, magtimes[bird], np.linalg.norm(magvalues[bird], axis=1))
+    bmag = np.average(Bvals, axis=0)
 
-    # Calculate barycentre for each timestep
-    barycentre = np.divide(np.add.reduce(datapos), datapos.shape[0])
-    baryB = np.divide(np.add.reduce(datab), datab.shape[0])
+
+    
+    # master position data array, with interpolated value
+    # Spacecraft position data, interpolated to the previously determined master time sequence
+    rarr = np.ndarray((numBirds,t_master.shape[0],3))
+    for bird in range(numBirds):
+        rarr[bird,:,0] = np.interp(t_master, postimes[bird], posvalues[bird][:,0])
+        rarr[bird,:,1] = np.interp(t_master, postimes[bird], posvalues[bird][:,1])
+        rarr[bird,:,2] = np.interp(t_master, postimes[bird], posvalues[bird][:,2])
+    
+    # Now all magnetic fields and positional data are of the same cadence and at the same times for each index
+    # Indices are: [s/c(0=mms1, 1=mms2, 2=mms3, 3=mms4), time_step, vector(0=x, 1=y, 2=z)]
+    # ie.  rarr[<spacecraft>, <timestep_index>, <cartesian_component_of_vector>]
+    # eg.  Y-position of mms4 at first time step:  rarr[3,0,1]
 
 
 
     # Calculate the positional offset of each bird, relative to mms1, for each timestep
     ## posoffset[i] == offset of mms(i+2), relative to mms1
-    posoffset = np.zeros([3, len(timeseries), 3])
+    posoffset = np.zeros([3, len(t_master), 3])
     for i in range(3):
-        posoffset[i] = datapos[i+1]-datapos[0]
+        posoffset[i] = rarr[i+1]-rarr[0]
     
     
-    k = np.zeros([4,len(timeseries),3])
+    k = np.zeros([4,len(t_master),3])
     
     ## Calculates the barycentre reciprical vector constants k_a, as inferred from equation (14.7) of "Analysis Methods for Multi-Spacecraft Data"
     # k[bird] = T_(matrix_multiply( 1/array_of_scalar_denominators , T_(array_of_vector_numerators)))
@@ -162,21 +190,21 @@ def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
     # Since we need to add this empty dimension anyway, we use it to perform the required transpose operation manually.
     gradB = np.add.reduce(np.matmul(
                                     k.reshape(k.shape+(1,)),
-                                    datab.reshape(datab.shape[:-1]+(1, datab.shape[-1]))
+                                    barr.reshape(barr.shape[:-1]+(1, barr.shape[-1]))
                                     ))
     
     # Per reference implementation, curlB is the sum across birds of each bird's barycentre reciprical vector cross B-vector, for each timestep
-    curlB = np.add.reduce(np.cross(k,datab))
+    curlB = np.add.reduce(np.cross(k,barr))
 
     # Per reference implementation, divB is the sum across birds of the dot product for each bird's barycentre reciprical vector and B-vector, for each timestep.
-    #divB = np.einsum('ij,ij->i',datab[0], k[0])+np.einsum('ij,ij->i',datab[1], k[1])+np.einsum('ij,ij->i',datab[2], k[2])+np.einsum('ij,ij->i',datab[3], k[3])
+    #divB = np.einsum('ij,ij->i',barr[0], k[0])+np.einsum('ij,ij->i',barr[1], k[1])+np.einsum('ij,ij->i',barr[2], k[2])+np.einsum('ij,ij->i',barr[3], k[3])
     ## Replacing this with a more efficient implementation.
     #The reshape at the end is largely cosmetic, as the output is otherwise shape: (timestep, 1, 1)
     divB_diag = np.matmul(
                                     k.reshape(k.shape[:-1]+(1, k.shape[-1])),
-                                    datab.reshape(datab.shape+(1,))
+                                    barr.reshape(barr.shape+(1,))
                                     )
-    divB = np.add.reduce(divB_diag).reshape((datab.shape[1],))
+    divB = np.add.reduce(divB_diag).reshape((barr.shape[1],))
 
     ## Sanity checks
     LevCiv3 = np.zeros((3,3,3))
@@ -195,7 +223,7 @@ def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
 
 
     # create the output variables
-    out_vars['timeseries' + suffix ] = timeseries
+    out_vars['t_master' + suffix ] = t_master
     out_vars['barcentre' + suffix ] = barycentre
     out_vars['gradB' + suffix ] = gradB
     out_vars['curlB' + suffix ] = curlB
