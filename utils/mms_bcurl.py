@@ -243,6 +243,7 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
     out_vars['jmag' + suffix] = jmag
     out_vars['baryB' + suffix] = bm
     out_vars['magB' + suffix] = bmag
+    out_vars['rvecs' + suffix] = k
 
     # Preserving old 'options' below, mostly as a reference for units.  Just in case.
     #
