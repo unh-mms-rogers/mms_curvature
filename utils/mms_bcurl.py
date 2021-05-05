@@ -29,6 +29,24 @@ m0 = 4.0*np.pi*1e-7 #  permeability of free space in SI units (H/m)
 #curl_dataset = mms_bcurl(fields=fieldList, positions=positionList)
 #
 
+
+def LeviCivita(Rank):
+        if not isinstance(Rank, int):
+            raise ValueError("Rank input must be of 'int' type")
+        # Make a Rank^Rank array.
+        # The overwhelming majority of it will need to be zeros, so start with that.
+        levciv = np.zeros((Rank,)*Rank)
+        forward = [x for x in range(Rank)] # list looks like [0, 1, 2, ..., Rank-1]
+        reverse = [x for x in range(Rank-1, -1, -1)] # list looks like [Rank-1, Rank-2, ..., 1, 0]
+        for step in range(Rank):
+            # the `list[n:] + list[:n]` construct gives a list rotated (with wrap-around) of n steps
+            # turn the rotated list into a tuple so it can be a position index for the numpy array
+            levciv[tuple(forward[step:]+forward[:step])] = 1
+            levciv[tuple(reverse[step:]+reverse[:step])] = -1
+        return levciv
+
+
+
 #def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
 def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=False, suffix=''):
     
@@ -163,6 +181,7 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
     
     
     k = np.zeros([4,len(t_master),3])
+    k_alt = np.zeros([4,len(t_master),3])
     
     ## Calculates the barycentre reciprical vector constants k_a, as inferred from equation (14.7) of "Analysis Methods for Multi-Spacecraft Data"
     # k[bird] = T_(matrix_multiply( 1/array_of_scalar_denominators , T_(array_of_vector_numerators)))
@@ -184,14 +203,18 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
     
     ## Much more processor and memory efficient method, using numpy's Einstein Summation function.
     k_num = np.cross(posoffset[1], posoffset[2])
+    # k_alt[1] = np.multiply((1/np.einsum('...i,...i', posoffset[0], k_num), k_num))
     k[1] = np.transpose(np.multiply((1/np.einsum('ij,ij->i',posoffset[0], k_num)), np.transpose(k_num)))
     k_num = np.cross(posoffset[0], posoffset[2])
+    # k_alt[2] = np.multiply((1/np.einsum('...i,...i', posoffset[1], k_num), k_num))
     k[2] = np.transpose(np.multiply((1/np.einsum('ij,ij->i',posoffset[1], k_num)), np.transpose(k_num)))
     k_num = np.cross(posoffset[0], posoffset[1])
+    # k_alt[3] = np.multiply((1/np.einsum('...i,...i', posoffset[2], k_num), k_num))
     k[3] = np.transpose(np.multiply((1/np.einsum('ij,ij->i',posoffset[2], k_num)), np.transpose(k_num)))
     del k_num
     ## Per equation (14.10) of "Analysis Methods for Multi-Spacecraft Data", sum of all k_a = 0.  Skip the heavy calculations for our relative origin.
     k[0] = k[0]-(k[3]+k[2]+k[1])
+    # k_alt[0] = k_alt[0]-(k_alt[3]+k_alt[2]+k_alt[1])
 
     # Per equation (14.15) of "Analysis Methods for Multi-Spacecraft Data", estimated gradient should be sum by bird of product of barcentre reciprical and transpose(B-vector)
     # np.reshape is required to permit numpy to orient the matrices for multiplication.
@@ -203,6 +226,9 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
     
     # Per reference implementation, curlB is the sum across birds of each bird's barycentre reciprical vector cross B-vector, for each timestep
     curlB = np.add.reduce(np.cross(k,barr))
+
+    # Theoretical validation of the gradient calculated using RV method
+    valid = np.add.reduce(np.einsum('jkl,...j,...k,...l',LeviCivita(3), k, k, barr), axis=0)
 
     # Per reference implementation, divB is the sum across birds of the dot product for each bird's barycentre reciprical vector and B-vector, for each timestep.
     #divB = np.einsum('ij,ij->i',barr[0], k[0])+np.einsum('ij,ij->i',barr[1], k[1])+np.einsum('ij,ij->i',barr[2], k[2])+np.einsum('ij,ij->i',barr[3], k[3])
@@ -244,6 +270,8 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
     out_vars['baryB' + suffix] = bm
     out_vars['magB' + suffix] = bmag
     out_vars['rvecs' + suffix] = k
+    out_vars['rvecs_alt' + suffix] = k_alt
+    out_vars['valid' + suffix] = valid
 
     # Preserving old 'options' below, mostly as a reference for units.  Just in case.
     #
