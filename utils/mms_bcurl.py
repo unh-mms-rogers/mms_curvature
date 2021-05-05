@@ -48,7 +48,7 @@ def LeviCivita(Rank):
 
 
 #def mms_bcurl(fields=None, positions=None, suffix='', norm=False):
-def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=False, suffix=''):
+def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=False, check_sane=False, suffix=''):
     
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
@@ -241,16 +241,17 @@ def mms_bcurl(postimes=None, posvalues=None, magtimes=None, magvalues=None, norm
     divB = np.add.reduce(divB_diag).reshape((barr.shape[1],))
 
     ## Sanity checks
-    LevCiv3 = np.zeros((3,3,3))
-    LevCiv3[0,1,2] = LevCiv3[1,2,0] = LevCiv3[2,0,1] = 1
-    LevCiv3[0,2,1] = LevCiv3[2,1,0] = LevCiv3[1,0,2] = -1
-    assert np.allclose(divB,
-                       np.trace(gradB, axis1=-2, axis2=-1),
-                       atol=0), 'Calculated divergence differs from trace of calculated gradient!'
-    assert np.allclose(curlB,
-                       np.einsum('ijk,...jk', LevCiv3, gradB),
-                       atol=0), 'Calculated curl differs from Levi-Civita permutated gradient!'
-    ## End of sanity checks
+    if check_sane:
+        LevCiv3 = np.zeros((3,3,3))
+        LevCiv3[0,1,2] = LevCiv3[1,2,0] = LevCiv3[2,0,1] = 1
+        LevCiv3[0,2,1] = LevCiv3[2,1,0] = LevCiv3[1,0,2] = -1
+        assert np.allclose(divB,
+                           np.trace(gradB, axis1=-2, axis2=-1),
+                           atol=0), 'Calculated divergence differs from trace of calculated gradient!'
+        assert np.allclose(curlB,
+                           np.einsum('ijk,...jk', LevCiv3, gradB),
+                           atol=0), 'Calculated curl differs from Levi-Civita permutated gradient!'
+        ## End of sanity checks
 
     jvec = 1e-12*curlB/m0
     jmag = np.sqrt(np.square(jvec[:,0])+np.square(jvec[:,1])+np.square(jvec[:,2]))

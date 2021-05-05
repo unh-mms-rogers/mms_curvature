@@ -6,7 +6,7 @@ calculate ion and electron gyroradius suing pyspedas
 import numpy as np
 import mms_curvature as curvature
 
-def DataLoadMoments(trange=['2017-05-01', '2017-05-02'], data_rate='srvy', level='l2', probe='1'):
+def DataLoadMoments(trange=['2017-05-01', '2017-05-02'], data_rate='srvy', level='l2', probe='1', density=False):
     '''
     Loads all FPI moments data.
 
@@ -30,12 +30,16 @@ def DataLoadMoments(trange=['2017-05-01', '2017-05-02'], data_rate='srvy', level
     
     distime, distempperp = fpidata['mms'+probe+'_dis_tempperp_'+fpirate].values()
     destime, destempperp = fpidata['mms'+probe+'_des_tempperp_'+fpirate].values()
+    if density: disn = fpidata['mms'+probe+'_dis_numberdensity_'+fpirate].values()[1]
     #extract data from tplot variables
     #distime, distempperp = get_data('mms'+probe+'_dis_tempperp_'+fpirate)
     #destime, destempperp = get_data('mms'+probe+'_des_tempperp_'+fpirate)
     
     # return all arrays
-    return (distime, distempperp, destime, destempperp)
+    if density:
+        return (distime, distempperp, destime, destempperp, disn)
+    else:
+        return (distime, distempperp, destime, destempperp)
 
 def CalcRadius(part_time=None, part_tempperp=None, b_time=None, b_mag=None, part_mass=1.672622e-27, part_q=1.602177e-19):
     '''
