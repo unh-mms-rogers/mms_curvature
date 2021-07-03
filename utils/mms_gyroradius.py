@@ -30,7 +30,7 @@ def DataLoadMoments(trange=['2017-05-01', '2017-05-02'], data_rate='srvy', level
     
     distime, distempperp = fpidata['mms'+probe+'_dis_tempperp_'+fpirate].values()
     destime, destempperp = fpidata['mms'+probe+'_des_tempperp_'+fpirate].values()
-    if density: disn = fpidata['mms'+probe+'_dis_numberdensity_'+fpirate].values()[1]
+    if density: ntime, disn = fpidata['mms'+probe+'_dis_numberdensity_'+fpirate].values()
     #extract data from tplot variables
     #distime, distempperp = get_data('mms'+probe+'_dis_tempperp_'+fpirate)
     #destime, destempperp = get_data('mms'+probe+'_des_tempperp_'+fpirate)
