@@ -3,3 +3,6 @@
 __pycache__/
 data/
 pydata/
+
+#Stop including edit swap files by accident.
+.swp
