@@ -1,8 +1,13 @@
 # This file adapted from mms_curl.py from the pyspedas library,
 # sourced from https://github.com/spedas/pyspedas
 #
-# All modifications copyright 2020 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# All modifications copyright 2020-2022 Tim Rogers.  All rights reserved.
+# Released under the Apache 2.0 license.
+
+# This file is retained only for historical reference.
+# A verified functioning and better optimized curlometer function 
+# may be found in the function "mms_CurlB" from this library.
+
 
 import numpy as np
 

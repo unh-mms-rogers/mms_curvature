@@ -1,5 +1,5 @@
 # Copyright 2020 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# Released under the Apache 2.0 license.
 #
 
 from .load_cdf import load_cdf

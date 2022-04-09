@@ -5,9 +5,10 @@
 # sourced from https://github.com/spedas/pyspedas
 #
 # All modifications copyright 2019 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# Released under the Apache 2.0 license.
 #
-# Original copyright notice from pyspedas source preserved below:
+# Original copyright notice from pyspedas preserved below for proper attribution:
+
 
 # Copyright (c) 2017, THEMIS group, Space Sciences Laboratory, UC Berkeley.
 # 

@@ -1,8 +1,9 @@
 
-# File modified from original found in pymms repository:  https://github.com/argallmr/pymms
+# File modified from original found in pymms repository:
+#   https://github.com/argallmr/pymms
 #
 # All modifications copyright 2019 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# Released under the Apache 2.0 license.
 
 import glob
 import os

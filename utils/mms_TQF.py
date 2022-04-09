@@ -1,3 +1,8 @@
+# Copyright 2020-2022 Anthony Rogers.  All rights reserved.
+# Released under the Apache 2.0 license.
+
+# This file is retained only for historical reference.
+
 '''
 Function(s) to extract Tetrahedron Quality Factor(TQF) and separation scale data
 from local copies of MMS SDC files.  
