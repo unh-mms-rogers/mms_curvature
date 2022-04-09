@@ -1,18 +1,9 @@
 # mms-curvature
-IDL and python3 routines for calculating the magnetic field curvature at the mesocenter of the MMS fleet in tetrahedron formation.
+Python3 routines for calculating the magnetic field curvature at the mesocenter of the MMS fleet in tetrahedron formation.
 
+Also contains basic functions for loading various instrument data from MMS spacecraft, calculating spacial gradients over time, and deriving the curl and divergence from such gradients.
 
-## Version 0.1
-### IDL:
-Currently have Harvey method working well.  Shen method will follow as soon as I can get to it.  Currently returns tplot variables of:
-
-- *b_gradient_gsm* => grad(B/|B|) ordered in GSM coordinates
-- *b_curvature_vector_gsm* => k-vector of magnetic field line curvature in GSM coordinates and units of (1/km)
-- *b_curvature_radius* => radius of curvature of magnetic field lines in units of (km)
-
-A more complete user guide will be forthcoming.
-
-### Python3:
+## Version 0.8
 Harvey curvature vector is calculated.  Returns numpy arrays of:
 
 - *t_master* => time series in unix time of the interpolated times for which the curvature is calculated

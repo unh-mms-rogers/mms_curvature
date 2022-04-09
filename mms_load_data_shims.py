@@ -1,8 +1,8 @@
 # This file adapted from mms_load_data_shims.py from the pyspedas library,
 # sourced from https://github.com/spedas/pyspedas
 #
-# All modifications copyright 2019 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# All modifications copyright 2019-2022 Tim Rogers.  All rights reserved.
+# Released under the Apache 2.0 license.
 
 """
 This module contains routines for loading MMS data
@@ -451,6 +451,7 @@ def mms_load_scm(
     return data,metadata
 
 
+# WARNING:  Until this comment is removed, the following function should be assumed incomplete or non-functional!
 #TODO: Finish rewrite of mms_load_feeps
 def mms_load_feeps(
         trange=['2015-10-16', '2015-10-17'],
@@ -528,41 +529,41 @@ def mms_load_feeps(
             time_clip=time_clip, no_update=no_update)
 
     
+    #probes = probe if isinstance(probe, list) else [probe]
+    #data_rates = data_rate if isinstance(data_rate, list) else [data_rate]
+    #levels = level if isinstance(level, list) else [level]
+    #datatypes = datatype if isinstance(datatype, list) else [datatype]
+    #
+    #probes = [str(p) for p in probes]
+    #
+    ##TODO: Migrate FEEPS-related sub-functions
+    #mms_feeps_correct_energies(probes, data_rate, level=level, suffix=suffix)
+    #
+    #if not no_flatfield_corrections:
+    #    mms_feeps_flat_field_corrections(probes=probes, data_rate=data_rate, suffix=suffix)
+    #
+    #for probe in probes:
+    #    for datatype in datatypes:
+    #       mms_feeps_remove_bad_data(probe=probe, data_rate=data_rate, datatype =datatype, level=level, suffix=suffix)
+    #       
+    #       for data_unit in data_units:
+    #           eyes = mms_feeps_active_eyes(trange, probe, data_rate, datatype, level)
+    #
+    #           mms_feeps_split_integral_ch(data_unit, datatype, probe, suffix=suffix, data_rate=data_rate, level=level, sensor_eyes=eyes)
+    #
+    #           mms_feeps_remove_sun(eyes, trange, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
+    #
+    #           mms_feeps_omni(eyes, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
+    #
+    #           mms_feeps_spin_avg(probe=probe, data_units=data_unit, descriptor=datatype, data_rate=data_rate, level=level, suffix=suffix)
+    #
+    #return tvars
+
     # Returning raw data until FEEPS-related sub-functions get migrated.
     return data,metadata
 
-    
-#    probes = probe if isinstance(probe, list) else [probe]
-#    data_rates = data_rate if isinstance(data_rate, list) else [data_rate]
-#    levels = level if isinstance(level, list) else [level]
-#    datatypes = datatype if isinstance(datatype, list) else [datatype]
-#
-#    probes = [str(p) for p in probes]
-#
-#    #TODO: Migrate FEEPS-related sub-functions
-#    mms_feeps_correct_energies(probes, data_rate, level=level, suffix=suffix)
-#
-#    if not no_flatfield_corrections:
-#        mms_feeps_flat_field_corrections(probes=probes, data_rate=data_rate, suffix=suffix)
-#
-#    for probe in probes:
-#        for datatype in datatypes:
-#           mms_feeps_remove_bad_data(probe=probe, data_rate=data_rate, datatype =datatype, level=level, suffix=suffix)
-#           
-#           for data_unit in data_units:
-#               eyes = mms_feeps_active_eyes(trange, probe, data_rate, datatype, level)
-#
-#               mms_feeps_split_integral_ch(data_unit, datatype, probe, suffix=suffix, data_rate=data_rate, level=level, sensor_eyes=eyes)
-#
-#               mms_feeps_remove_sun(eyes, trange, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
-#
-#               mms_feeps_omni(eyes, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
-#
-#               mms_feeps_spin_avg(probe=probe, data_units=data_unit, descriptor=datatype, data_rate=data_rate, level=level, suffix=suffix)
-#
-#    return tvars
 
-
+# WARNING:  Until this comment is removed, the following function should be assumed incomplete or non-functional!
 # Function migrated from pyspedas: pyspedas/mms/eis/mms_eis_omni.py
 def mms_eis_omni(
         probe,
@@ -638,6 +639,7 @@ def mms_eis_omni(
         #return None
 
 
+# WARNING:  Until this comment is removed, the following function should be assumed incomplete or non-functional!
 def mms_load_eis(
         trange=['2015-10-16', '2015-10-17'],
         probe='1',
@@ -1077,4 +1079,64 @@ def mms_load_fsm(
     data,metadata = mms_load_data(trange=trange, notplot=notplot, varformat=varformat, probe=probe,
             data_rate=data_rate, level=level, instrument=instrument, descriptor=datatype,
             get_support_data=get_support_data, time_clip=time_clip, no_update=no_update)
+    return data,metadata
+
+
+def mms_load_ancillary(
+        trange=['2015-10-16', '2015-10-17'],
+        probe=None,
+        datatype=None,
+        anc_product='defq',
+        varformat=None,
+        prefix='',
+        suffix='',
+        get_support_data=False,
+        time_clip=False,
+        no_update=False,
+        available=False,
+        notplot=False ):
+    """
+    This function loads DEFQ data and metadata
+    
+    Parameters:
+        trange : list of str
+            time range of interest [starttime, endtime] with the format 
+            'YYYY-MM-DD','YYYY-MM-DD'] or to specify more or less than a day 
+            ['YYYY-MM-DD/hh:mm:ss','YYYY-MM-DD/hh:mm:ss']
+
+        probe : str or list of str
+            list of probes, valid values for MMS probes are ['1','2','3','4']. 
+
+        datatype : str or list of str
+            Valid datatypes for MEC are: ['ephts04d', 'epht89q', 'epht89d']; default is 'ephts04d'
+
+        get_support_data: bool
+            If True, data with an attribute "VAR_TYPE" with a value of "support_data"
+            will be loaded into data tables.  If False, only loads in data with a 
+            "VAR_TYPE" attribute of "data".  Defaults to False.
+
+        time_clip: bool
+            Data will be clipped to the exact trange specified by the trange keyword.
+            
+        varformat: str
+            The file variable formats to load.  Wildcard character
+            "*" is accepted.  By default, all variables are loaded in.
+
+        prefix: str
+            The variable names will be given this prefix.  By default, 
+            no prefix is added.
+
+        suffix: str
+            The variable names will be given this suffix.  By default, 
+            no suffix is added.
+
+            
+    Returns:
+        Tuple of dictionaries with the loaded data and metadata.
+        ie. (data, metadata)
+
+    """
+    data,metadata = mms_load_data(trange=trange, probe=probe, data_rate=None, level=None, instrument=None,
+            descriptor=datatype, datatype='ancillary', anc_product=anc_product, varformat=varformat, prefix=prefix, suffix=suffix, get_support_data=get_support_data,
+            time_clip=time_clip, no_update=no_update)
     return data,metadata

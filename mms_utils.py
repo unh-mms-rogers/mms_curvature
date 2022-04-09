@@ -6,10 +6,11 @@ Created on Sun Feb 25 13:34:47 2018
 @author: argall
 """
 
-# File modified from original found in pymms repository:  https://github.com/argallmr/pymms
+# File modified from original found in pymms repository:
+#   https://github.com/argallmr/pymms
 #
 # All modifications copyright 2019 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# Released under the Apache 2.0 license.
 
 import os
 import datetime as dt
@@ -146,10 +147,10 @@ def filter_time(fnames, start_date, end_date):
     
     craftSet = set()
     for name in parts:
-        craftSet.add(name[0]) # First part is which spacecraft.
+        craftSet.add((name[0], name[1])) # First part is which spacecraft. Second is instrument.
     
     for craft in craftSet:
-        files = [f for f in fileNames if os.path.basename(f).startswith(craft)]
+        files = [f for f in fileNames if os.path.basename(f).startswith(craft[0]+'_'+craft[1])]
         # Reparse just the set of files we're working with.
         parts = parse_filename(files)
         
@@ -227,15 +228,34 @@ def parse_filename(fnames):
     
     # Parse each file
     for file in files:
-        # Parse the file names
-        parts = os.path.basename(file).split('_')
-        
-        if len(parts) == 6:
-            optdesc = ''
-        else:
-            optdesc = parts[4]
+        # Special handling if the file is ancillary data
+        if 'ancillary' in file.split('/'):
+            # Parse the file names
+            basename,extension = os.path.splitext(os.path.basename(file))
+            parts = basename.split('_')
             
-        out.append((*parts[0:4], optdesc, parts[-2], parts[-1][1:-4]))
+            # Ancillary filename structure:
+            #   [0]: 'mms' or spacecraft
+            #   [1]: ancillary product (we'll return this as the Instrument ID)
+            #   [2]: Start_date in '%Y%j' format (4-digit year, 3-digit day-of-year)
+            #   [3]: End_date in '%Y%j' format (as above)
+            #   [4]: Version
+            
+            version = extension[2:]
+            start_date_parsed = dt.datetime.strptime(parts[2], '%Y%j')
+            start_date = start_date_parsed.strftime('%Y%m%d')
+            out.append((*parts[0:2], '', '', '', start_date, version))
+            
+        else:
+            # Parse the file names
+            parts = os.path.basename(file).split('_')
+            
+            if len(parts) == 6:
+                optdesc = ''
+            else:
+                optdesc = parts[4]
+                
+            out.append((*parts[0:4], optdesc, parts[-2], parts[-1][1:-4]))
     
     return out
 

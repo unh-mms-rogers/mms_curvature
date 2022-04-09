@@ -1,3 +1,8 @@
+# Copyright 2019-2022 Tim Rogers.  All rights reserved.
+# Released under the Apache 2.0 license.
+
+# This file is retained only for historical reference.
+
 from . import mms_load_data_shims as shims
 import logging
 

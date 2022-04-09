@@ -1,4 +1,5 @@
 requests
-p_tqdm
 cdflib
 numpy
+python-dateutil
+pandas

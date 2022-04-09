@@ -7,18 +7,24 @@ Uses pyspedas for MMS data file loading
 Example script for loading required data and calculating the curvature vector:
     
 import time
+import re
 import numpy as np
-from mms_curvature import DataLoad, Curvature
+from mms_curvature import DataLoad, mms_Grad, mms_Curvature
 
 timeStart =  time.strftime("%H:%M:%S", time.localtime())
 print("Files Loading:")
 
-postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4 = DataLoad(trange=['2017-05-04', '2017-05-05'])
+data,metadata = DataLoad(trange=['2017-05-04', '2017-05-05'])
+postimes = [data['mec'][n]['x'] for n in data['mec'] if re.compile('mms\d_mec_r_gsm_srvy_l2').match(n)]
+posvalues = [data['mec'][n]['y'] for n in data['mec'] if re.compile('mms\d_mec_r_gsm_srvy_l2').match(n)]
+magtimes = [data['fgm'][n]['x'] for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2').match(n)]
+magvalues = [data['fgm'][n]['y'] for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2').match(n)]
 
 print("Time started: ", timeStart)
 print("Time Loaded: ", time.strftime("%H:%M:%S", time.localtime()))
 
-t_master, grad_Harvey, curve_Harvey = Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4)
+grad_Harvey, bm, bmag, rm, t_master = mms_Grad(postimes, posvalues, magtimes, magvalues)
+curve_Harvey = mms_Curvature(grad_Harvey, bm)
 
 np.savetxt("t_master.csv", t_master, delimiter=",")
 np.savetxt("curve_Harvey.csv", curve_Harvey, delimiter=",")
@@ -27,132 +33,118 @@ np.save("grad_Harvey.npy", grad_Harvey)
 # end
 ****************************************************************************
 
----AJR 08.22.2019
+---TJR 10.09.2020
+
+Copyright 2020-2022 Anthony Rogers.  All rights reserved.
+Released under the Apache 2.0 license.
+
+NOTE: Need to update the docstring for mms_Grad after refactoring
 '''
 import numpy as np
 
-def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, postime3, pos3, magtime3, mag3, postime4, pos4, magtime4, mag4, report_all=False): 
+def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=True):
+    
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
     Returns those and the master time (interpolated from FGM data) as numpy arrays
+
+    Input parameters-
+    NOTE:   order of each list is assumed to be consistent, i.e. that MMS1 data 
+            is always in the [0] index of each list while MMS4 data is always 
+            in the [3] index and so on.  While order is arbitrary, it must be 
+            consistent for all of the following lists.
+
+    postimes:   list of numpy arrays with the unix timestamp of each position vector
+
+    posvalues:  list of numpy arrays with the position vector of a spacecraft
+
+    magtimes:   list of numpy arrays with unix timestamp of each magnetic field vector
+
+    magvalues:  list of numpy arrays with magnetic field vector measured by a
+                spacecraft
+
+    normalize:  if True normalizes magnetic field vectors before continusing
+                calculation; required for calculating curvature
+
+                if False leaves magnetic field as full vector with magnitude;
+                required for calculating curl and divergence
     '''
     
-    # normalize magnetic fields
-    bn1 = mag1[:,0:3]/mag1[:,3,np.newaxis]
-    bn2 = mag2[:,0:3]/mag2[:,3,np.newaxis]
-    bn3 = mag3[:,0:3]/mag3[:,3,np.newaxis]
-    bn4 = mag4[:,0:3]/mag4[:,3,np.newaxis]
+    # Number of spacecraft in inputs.  Assumed from number of position time arrays.
+    numBirds = len(postimes)
+
+    # Sanity check.  Throw an error if number of time arrays and data arrays don't all match.
+    if len(posvalues) != numBirds: raise ValueError('Number of position value arrays does not match number of position time arrays!')
+    if len(magtimes) != numBirds: raise ValueError('Number of magnetic field time arrays does not match number of position time arrays!')
+    if len(magvalues) != numBirds: raise ValueError('Number of magnetic field value arrays does not match number of position time arrays!')
+
+
+    bn = [None]*numBirds
+    if normalize:
+        # normalize magnetic fields
+        if magvalues[0].shape[-1] == 4:   # tests for |B| given as 4th vector in data
+            for bird in range(numBirds):
+                bn[bird] = magvalues[bird][:,0:3]/magvalues[bird][:,3,np.newaxis]
+        else: 
+            for bird in range(numBirds):  # else calculates |B| from the 3-vector given
+                bn[bird] = magvalues[bird]/np.linalg.norm(magvalues[bird], axis=1).reshape(magvalues[bird].shape[0], 1)
+
+    else:
+        # use magnetic fields without normalizing
+        for bird in range(numBirds):
+            bn[bird] = magvalues[bird][:,0:3]
 
     # find probe with latest beginning point for magnetic field data
-    mastersc = np.argmax([magtime1[0], magtime2[0], magtime3[0], magtime4[0]])
+    firsttimes = []
+    lasttimes = []
+    for bird in range(numBirds):
+        firsttimes.append(magtimes[bird][0])
+        lasttimes.append(magtimes[bird][-1])
+    mastersc = np.argmax(firsttimes)
     # find earliest end time for all space craft in range
-    tend = min(magtime1[-1], magtime2[-1], magtime3[-1], magtime4[-1])
+    tend = min(lasttimes)
     tend_i = 0  # initialize counting index for finding ending index for master S/C
     
     # initialize master time sequence by trimming time from last S/C to start (mastersc)
-    if mastersc == 0:
-        while magtime1[tend_i] < tend: tend_i += 1
-        t_master = magtime1[0:(tend_i+1)]
-    elif mastersc == 1:
-        while magtime2[tend_i] < tend: tend_i += 1
-        t_master = magtime2[0:(tend_i+1)]
-    elif mastersc == 2:
-        while magtime3[tend_i] < tend: tend_i += 1
-        t_master = magtime3[0:(tend_i+1)]
-    elif mastersc == 3:
-        while magtime4[tend_i] < tend: tend_i += 1
-        t_master = magtime4[0:(tend_i+1)]
+    while magtimes[mastersc][tend_i] < tend: tend_i += 1
+    t_master = magtimes[mastersc][0:(tend_i+1)]
     
     # master mag field data arr, with interpolated values
     # Magnetic field data, interpolated to the previously determined master time sequence
-    barr=np.ndarray((4,t_master.shape[0],3))
+    barr=np.ndarray((numBirds,t_master.shape[0],3))
+    for bird in range(numBirds):
+        barr[bird,:,0] = np.interp(t_master, magtimes[bird], bn[bird][:,0])
+        barr[bird,:,1] = np.interp(t_master, magtimes[bird], bn[bird][:,1])
+        barr[bird,:,2] = np.interp(t_master, magtimes[bird], bn[bird][:,2])
     
-    barr[0,:,0] = np.interp(t_master, magtime1, bn1[:,0]) # MMS1
-    barr[0,:,1] = np.interp(t_master, magtime1, bn1[:,1]) 
-    barr[0,:,2] = np.interp(t_master, magtime1, bn1[:,2]) 
-    
-    barr[1,:,0] = np.interp(t_master, magtime2, bn2[:,0]) # MMS2
-    barr[1,:,1] = np.interp(t_master, magtime2, bn2[:,1]) 
-    barr[1,:,2] = np.interp(t_master, magtime2, bn2[:,2]) 
-    
-    barr[2,:,0] = np.interp(t_master, magtime3, bn3[:,0]) # MMS3
-    barr[2,:,1] = np.interp(t_master, magtime3, bn3[:,1]) 
-    barr[2,:,2] = np.interp(t_master, magtime3, bn3[:,2]) 
-    
-    barr[3,:,0] = np.interp(t_master, magtime4, bn4[:,0]) # MMS4
-    barr[3,:,1] = np.interp(t_master, magtime4, bn4[:,1]) 
-    barr[3,:,2] = np.interp(t_master, magtime4, bn4[:,2]) 
 
 
     # Calculate average |B| for export
-    B1 = np.interp(t_master, magtime1, mag1[:,3])
-    B2 = np.interp(t_master, magtime2, mag2[:,3])
-    B3 = np.interp(t_master, magtime3, mag3[:,3])
-    B4 = np.interp(t_master, magtime4, mag4[:,3])
-    bmag = np.average([B1, B2, B3, B4], axis=0)
+    Bvals = [None]*numBirds
+    if magvalues[0].shape[-1] == 4:    # tests for |B| given as 4th vector in data
+        for bird in range(numBirds):
+            Bvals[bird] = np.interp(t_master, magtimes[bird], magvalues[bird][:,3])
+    else:
+        for bird in range(numBirds):   # else calculates |B| from the 3-vector given
+            Bvals[bird] = np.interp(t_master, magtimes[bird], np.linalg.norm(magvalues[bird], axis=1))
+    bmag = np.average(Bvals, axis=0)
 
 
-
-    # The below code is preseved in case a future need calls for timesteps to by trimmed
-    #  in this function instead of during data load of input for this function.
-    '''
-    # need to clear extranious data points from positional data for
-    #   np.interp to work as intended.
-    bcnt = 0        # MMS1
-    while postime1[bcnt] < t_master[0] and bcnt: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime1[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos1 = pos1[(bcnt-1):(ecnt+1),:]
-    postime1 = postime1[(bcnt-1):(ecnt+1),:]
-   
-    bcnt = 0        # MMS2
-    while postime2[bcnt] < t_master[0]: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime2[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos2 = pos2[(bcnt-1):(ecnt+1),:]
-    postime2 = postime2[(bcnt-1):(ecnt+1),:]
-
-    bcnt = 0        # MMS3
-    while postime3[bcnt] < t_master[0]: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime3[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos3 = pos3[(bcnt-1):(ecnt+1),:]
-    postime3 = postime3[(bcnt-1):(ecnt+1),:]
-    
-    bcnt = 0        # MMS4
-    while postime4[bcnt] < t_master[0]: bcnt = bcnt + 1
-    ecnt = bcnt
-    while postime4[ecnt] <= t_master[-1]: ecnt = ecnt + 1
-    pos4 = pos4[(bcnt-1):(ecnt+1),:]
-    postime4 = postime4[(bcnt-1):(ecnt+1),:]
-    ''' 
     
     # master position data array, with interpolated value
     # Spacecraft position data, interpolated to the previously determined master time sequence
-    rarr = np.ndarray((4,t_master.shape[0],3))
+    rarr = np.ndarray((numBirds,t_master.shape[0],3))
+    for bird in range(numBirds):
+        rarr[bird,:,0] = np.interp(t_master, postimes[bird], posvalues[bird][:,0])
+        rarr[bird,:,1] = np.interp(t_master, postimes[bird], posvalues[bird][:,1])
+        rarr[bird,:,2] = np.interp(t_master, postimes[bird], posvalues[bird][:,2])
     
-    rarr[0,:,0] = np.interp(t_master, postime1, pos1[:,0]) # MMS1
-    rarr[0,:,1] = np.interp(t_master, postime1, pos1[:,1])
-    rarr[0,:,2] = np.interp(t_master, postime1, pos1[:,2])
-    
-    rarr[1,:,0] = np.interp(t_master, postime2, pos2[:,0]) # MMS2
-    rarr[1,:,1] = np.interp(t_master, postime2, pos2[:,1])
-    rarr[1,:,2] = np.interp(t_master, postime2, pos2[:,2])
-    
-    rarr[2,:,0] = np.interp(t_master, postime3, pos3[:,0]) # MMS3
-    rarr[2,:,1] = np.interp(t_master, postime3, pos3[:,1])
-    rarr[2,:,2] = np.interp(t_master, postime3, pos3[:,2])
-    
-    rarr[3,:,0] = np.interp(t_master, postime4, pos4[:,0]) # MMS4
-    rarr[3,:,1] = np.interp(t_master, postime4, pos4[:,1])
-    rarr[3,:,2] = np.interp(t_master, postime4, pos4[:,2])
-    
-    # Now all magnetic fields and positional data of of the same cadence and at the same times for each index
+    # Now all magnetic fields and positional data are of the same cadence and at the same times for each index
     # Indices are: [s/c(0=mms1, 1=mms2, 2=mms3, 3=mms4), time_step, vector(0=x, 1=y, 2=z)]
     # ie.  rarr[<spacecraft>, <timestep_index>, <cartesian_component_of_vector>]
     # eg.  Y-position of mms4 at first time step:  rarr[3,0,1]
     
-    # calculate position and normalized magnetic field at mesocenter of the fleet
+    # calculate position and magnetic field at mesocenter of the fleet
     
     
     # Commenting old implementation
@@ -180,6 +172,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # Calculate volumetric tensor (Harvey, Ch 12.4, Eq 12.23, from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.)
     
+    ## Section:  old, not-actually correct code
     #Rvol = np.ndarray((t_master.shape[0], 3, 3))
     #for i in range(t_master.shape[0]):
     #    #rvol_step = np.zeros([3,3])    # Stepwise method gives same result as explicit below
@@ -190,17 +183,34 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #    #Rvol[i,:,:] = (1./4.)*((np.outer(rarr[0,i,:], rarr[0,i,:]) + np.outer(rarr[1,i,:], rarr[1,i,:]) + np.outer(rarr[2,i,:], rarr[2,i,:]) + np.outer(rarr[3,i,:], rarr[3,i,:])) - np.outer(rm[i,:], rm[i,:]))     # give same result as stepwise above
     
     # Intermediate variable to hold the self-outer-product of rm at each timestep
-    rmOuter = np.einsum('...i,...j->...ij',rm,rm)  # explicit form 'outer product' use of EinSum, broadcast across leading dimensions
+    ##rmOuter = np.einsum('...i,...j->...ij',rm,rm)  # explicit form 'outer product' use of EinSum, broadcast across leading dimensions
     
     # Intermediate variable to hold the self-outer-product of rarr, per bird, at each timestep
-    rarrOuter = np.einsum('...i,...j->...ij',rarr,rarr)  # Same as line above
+    ##rarrOuter = np.einsum('...i,...j->...ij',rarr,rarr)  # Same as line above
     
-    Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise Rvol code commented out above.
+    ##Rvol = np.divide(np.add.reduce(rarrOuter) - rmOuter, rarr.shape[0])     # give same result as stepwise Rvol code commented out above.
     # Brief description of operations in above line:
     #  All of the following occur for each timestep...
     #  1)  Collapse the self-outer-products of rarr by summing across all spacecraft
     #  2)  From above result, subtract the self-outer-product of rm (position of mesocenter)
     #  3)  Divide resultant array from above step by the number of spacecraft
+    
+    ## End Section:  old, not-actually correct code
+    
+    ## Explicit equation construction from "Analysis Methods for Multi-Spacecraft Data" Paschmann ed.
+    rrarr = np.matmul(rarr[:,:,:,None], rarr[:,:,None,:]) # the r_a*r_a^T term from (12.23)
+    rmrm = np.matmul(rm[:,:,None], rm[:,None,:])  # the r_b*r_b^T term from (12.23)
+    
+    # This just expands the r_b*r_b^T term to match the shape of rrar above for easy broadcast of the subtraction and summation
+    # rmrm_expanded = np.repeat(rmrm[None,:,:,:], repeats=rrarr.shape[0], axis=0)
+    
+    # partial_R is every term inside the summation of (12.23)
+    #  ie.  R = 1/N * sum(n=1..numBirds, partial_R[n]
+    # partial_R = rrarr - rmrm_expanded
+    
+    # results is R as defined by (12.23) for all time steps, with shape (timesteps, 3, 3)
+    Rvol = np.subtract(np.divide(np.add.reduce(rrarr, axis=0), rarr.shape[0]), rmrm) # more efficient - AJR
+    # Rvol = np.divide(np.add.reduce(partial_R),partial_R.shape[0])
     
     # Pre-calculate the inverse array of Rvol here to avoid needless recalculation later.
     Rinv = np.linalg.inv(Rvol)
@@ -230,11 +240,16 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     
     # Vectorized matrix operations to calculate the above.  Saves a lot of compute time at the expense of a little memory.
     tmpR = np.repeat(rarr[np.newaxis,:,:,:],rarr.shape[0],axis=0)  # Stretch the array to be 2-D instead of 1-D for the sats.  Required for next operation.
-    triR = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpR,axes=(1,0,2,3)) - tmpR, -1), -1))  # This produces a triangular matrix of dR=D_a - D_b, for all [a != b]
-    
+    # triR = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpR,axes=(1,0,2,3)) - tmpR, -1), -1))  # This produces a triangular matrix of dR=D_a - D_b, for all [a != b]
+    diffR = np.subtract(np.moveaxis(tmpR, [0,1], [1,0]), tmpR)
+    triR = np.moveaxis(np.triu(np.moveaxis(diffR, [0,1], [-2,-1]), 1), [-2,-1], [0,1]) # updates from depreciating 'rollaxis' and makes a bit more readable what's happening -AJR
+
     tmpB = np.repeat(barr[np.newaxis,:,:,:],barr.shape[0],axis=0)  # Same as above, but with B instead
-    triB = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpB,axes=(1,0,2,3)) - tmpB, -1), -1)) # Again, dB=B_a - B_b, for all [a != b]
-    
+    # triB = np.triu(np.rollaxis(np.rollaxis(np.transpose(tmpB,axes=(1,0,2,3)) - tmpB, -1), -1)) # Again, dB=B_a - B_b, for all [a != b]
+    diffB = np.subtract(np.moveaxis(tmpB, [0,1], [1,0]), tmpB)
+    triB = np.moveaxis(np.triu(np.moveaxis(diffB, [0,1], [-2,-1]), 1), [-2,-1], [0,1])
+
+
     #Example of effect of above operations:
     # Each b_i below is a 3-vector
     # 
@@ -246,6 +261,7 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #  [b_1, b_2, b_3, b_4]]
     # 
     # Line 250, two steps, first array is intermediate form (again, at each timestep):
+    # diffB = 
     # [[b_1-b_1,  b_1-b_2,  b_1-b_3, b_1-b_4],
     #  [b_2-b_1,  b_2-b_2,  b_2-b_3, b_2-b_4],
     #  [b_3-b_1,  b_3-b_2,  b_3-b_3, b_3-b_4],
@@ -257,39 +273,60 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     #  [0      ,  0      ,  0      , b_3-b_4],
     #  [0      ,  0      ,  0      , 0      ]]
     
-    # Calculate the partial components for dbdr
-    dtemp = np.ndarray((3, t_master.shape[0], 3))
-    dtemp[0] = np.einsum('...ab,...ab',triB,triR) #This gets us the diagonals of dbdr for B_i and R_i (eg, both x components, both y, ...)
-    dtemp[1] = np.einsum('...ab,...ab',triB,np.roll(triR,-1,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+1)  (eg, B_x * R_y, ...)
-    dtemp[2] = np.einsum('...ab,...ab',triB,np.roll(triR,-2,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+2)  (eg, B_y * R_x, ...)
+    # For each timestep t, dtemp[:,t,:] now looks like this:
+    # dtemp[:,t] = [[dB_x*dR_x, dB_y*dR_y, dB_z*dR_z],
+    #               [dB_x*dR_y, dB_y*dR_z, dB_z*dR_x],
+    #               [dB_x*dR_z, dB_y*dR_x, dB_z*dR_y]]
     
-    # Constructs dbdr matrix for each timestep, where dbdr[i,j] will return the relavant dB_i*dR_j resultant vector
-    dbdr = np.einsum('...i,...ij->...ij',dtemp[0],np.identity(3)) + \
-            np.einsum('...i,...ij->...ij',dtemp[1],(np.roll(np.identity(3),-1,axis=0))) + \
-            np.einsum('...i,...ij->...ij',dtemp[2],(np.roll(np.identity(3),-2,axis=0)))
+    # The below constructs dbdr by twisting the dtemp array to properly place the diagonals for dbdr.
+    #
+    # dbdr[t] = [[dtemp[0,t,0], dtemp[1,t,0], dtemp[2,t,0],
+    #            [dtemp[2,t,1], dtemp[0,t,1], dtemp[1,t,1],
+    #            [dtemp[1,t,2], dtemp[2,t,2], dtemp[0,t,2]]
+    #
+    # ===
+    #
+    # dbdr[t] = [[dB_x*dR_x, dB_x*dR_y, dB_x*dR_z],
+    #            [dB_y*dR_x, dB_y*dR_y, dB_y*dR_z],
+    #            [dB_z*dR_x, dB_z*dR_y, dB_z*dR_z]]
+    #
     
-    # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there's some simpler way to calculate this, but I haven't found it yet.
-    # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
+    dbdr = np.add.reduce(np.einsum('...i,...j->...ij', triB, triR), axis=(0,1))    # creates a [time, 3x3 array] array
+    grad_Harvey = (1/rarr.shape[0])**2 * np.matmul(dbdr, Rinv)  # same as np.einsum('...ij,...jk->ik', dbdr, Rinv)
 
-    numBirds = 4    # Set for MMS.  Can be changed with rest of code to expand for a larger fleet
+    # The calculated gradient (B_i/d_j) is transposed from the accepted index order for the gradient (d_i B_j) so last thing we do is swap the last two axis
+    grad_Harvey = np.moveaxis(grad_Harvey, [-2,-1], [-1,-2])
 
-    tmpHarv = np.ndarray((3, t_master.shape[0], 3))
-    tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
-    tmpHarv[1] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-1,1)),np.square(numBirds))
-    tmpHarv[2] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-2,1)),np.square(numBirds))
-    
-    # Constructs the gradient matrix for each timestep from the diagonals calculated in the above steps.
-    grad_Harvey = np.transpose( \
-                  np.einsum('...i,...ij->...ij',tmpHarv[0],np.identity(3)) + \
-                  np.einsum('...i,...ij->...ij',tmpHarv[1],(np.roll(np.identity(3),-1,axis=0))) + \
-                  np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0))) \
-                  , (0,2,1)) # Due to all the matrix rolling shenanigans leading up to this, we need to transpose the matrix from each timestep.
+    # The above is certainly more readable than the version below and (fingers crossed) clears up an inverted vector issue in the code following - AJR
 
-    # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
-    # The below gives identical results as, but is much more efficient than: 
-    #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])
-    curve_Harvey = np.einsum('...ij,...j', grad_Harvey, bm)
+
     
+
+    ### # Calculate the partial components for dbdr
+    ### dtemp = np.ndarray((3, t_master.shape[0], 3))
+    ### dtemp[0] = np.einsum('...ab,...ab',triB,triR) #This gets us the diagonals of dbdr for B_i and R_i (eg, both x components, both y, ...)
+    ### dtemp[1] = np.einsum('...ab,...ab',triB,np.roll(triR,-1,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+1)  (eg, B_x * R_y, ...)
+    ### dtemp[2] = np.einsum('...ab,...ab',triB,np.roll(triR,-2,axis=1)) #This gets us the diagonals of dbdr for B_i and R_mod(i+2)  (eg, B_y * R_x, ...)
+    ### 
+    ### # Constructs dbdr matrix for each timestep, where dbdr[i,j] will return the relavant dB_i*dR_j resultant vector
+    ### dbdr = np.einsum('...i,...ij->...ij',dtemp[0],np.identity(3)) + \
+    ###         np.einsum('...i,...ij->...ij',dtemp[1],(np.roll(np.identity(3),-1,axis=0))) + \
+    ###         np.einsum('...i,...ij->...ij',dtemp[2],(np.roll(np.identity(3),-2,axis=0)))
+    ### 
+    ### # This calculates and holds the diagonals for the Harvey gradient.  I'm sure there's some simpler way to calculate this, but I haven't found it yet.
+    ### # This eventually gets us to the Harvey gradients in the same manner as we got dbdr above.
+
+    ### tmpHarv = np.ndarray((3, t_master.shape[0], 3))
+    ### tmpHarv[0] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),dbdr),np.square(numBirds))
+    ### tmpHarv[1] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-1,1)),np.square(numBirds))
+    ### tmpHarv[2] = np.divide(np.einsum('...i,...i',np.moveaxis(Rinv,1,-1),np.roll(dbdr,-2,1)),np.square(numBirds))
+    ### 
+    ### # Constructs the gradient matrix for each timestep from the diagonals calculated in the above steps.
+    ### grad_Harvey = \
+    ###               np.einsum('...i,...ij->...ij',tmpHarv[0],np.identity(3)) + \
+    ###               np.einsum('...i,...ij->...ij',tmpHarv[1],(np.roll(np.identity(3),-1,axis=0))) + \
+    ###               np.einsum('...i,...ij->...ij',tmpHarv[2],(np.roll(np.identity(3),-2,axis=0)))
+
     ## List of references for how numpy.einsum operates:
     # 
     # Official docs on einsum (as of numpy 1.18): https://numpy.org/doc/1.18/reference/generated/numpy.einsum.html
@@ -313,38 +350,105 @@ def Curvature(postime1, pos1, magtime1, mag1, postime2, pos2, magtime2, mag2, po
     for t in range(t_master.shape[0]):
         sol_curve_Harvey[t,:] = np.matmul(sol_grad_Harvey[t,:,:], bm[t,:])
     '''         # Solenoid correction has little effect, which is not surprising
-
-    outputs = (t_master, grad_Harvey, curve_Harvey)
-
-
-
-    if report_all:
-        # Use barr and B* to find minimum dB along each axis
-        a_ne_b_list=[[1,2,3],[2,3],[3]]
-        B_arr = [B1, B2, B3, B4]
-        dBmin = np.full((t_master.shape[0],3), np.inf)     # minimum dB for x,y,z GSM 
-        for t in range(t_master.shape[0]):          # step through the time series
-            for a in range(3):                      # a = MMS 1(0)  -> 3(2); MMS 4 done implicitly
-                for b in a_ne_b_list[a]:            # b for sc_a != sc_b to do all possible combonations
-                    tmp_x = (barr[a,t,0] * B_arr[a][t]) - (barr[b,t,0] * B_arr[b][t])
-                    tmp_y = (barr[a,t,1] * B_arr[a][t]) - (barr[b,t,1] * B_arr[b][t])
-                    tmp_z = (barr[a,t,2] * B_arr[a][t]) - (barr[b,t,2] * B_arr[b][t])
-                    if tmp_x < dBmin[t,0]: dBmin[t,0] = tmp_x
-                    if tmp_y < dBmin[t,1]: dBmin[t,1] = tmp_y   # finds minimum change in B along each axis
-                    if tmp_z < dBmin[t,2]: dBmin[t,2] = tmp_z
-                #end for
-            #end for
-        #end for
-
-        outputs += (rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)  #used for troubleshooting
     
 
-    return outputs
+    return grad_Harvey, bm, bmag, rm, t_master
+
+
+
+
+def mms_Curvature(grad, bm):
+    '''
+    function to calculate magnetic field line curvature vector k = b · grad(b) from the
+    magnetic field spacial gradient (grad) and the normalized magnetic field vector at 
+    the barycenter of the spacecraft formation (bm)
+
+    Inputs:
+    grad    : a time series array with dimensions t x 3 x 3 representing the spacial
+              gradient of the normalized magnetic field grad(b) at each time step.
+              Assumed to be the output from the mms_Grad function described in this 
+              library module.
+
+    bm      : a time series array with dimensions t x 3 representing the normalized 
+              vector magnetic field b = B/|B| at each time step.  Assumed to be the
+              output of the mms_Grad function described in this library.
+
+    ---NB: 'grad' and 'bm' are assumed to have identical timesteps, beginning, and 
+           ending times, as expected from the outputs of the mms_Grad function 
+           described in this library.
+
+    Outputs:
+    curve_Harvey    : a time series array with dimensions t x 3 representing the 
+                      magnetic field line curvature vector in 3 dimensions at the
+                      same time steps as used for the input arrays.
+    '''
+
+
+    # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
+    # The below gives identical results as, but is much more efficient than: 
+    #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])
+    curve_Harvey = np.einsum('...ij,...i', grad, bm)
     
-    # with report_all and with_uncertainty outputs = (t_master, grad_Harvey, curve_Harvey, minR, minB, uk, rarr, barr, rm, bm, bmag, dBmin, Rvol, Rinv)
+    return curve_Harvey
+
+    
+
+def mms_CurlB(Grad):
+    '''
+    Function to calculate the curl of the magnetic field by applying a rank 3 
+    Levi-Civita tensor to the spacial gradient of the full vector magnetic 
+    field (NOTE: NOT the gradient of the normalized vector magnetic field as
+    used in the curvature vector calculation).
+
+    Inputs:
+    Grad    : A time series array with dimensions t x 3 x 3 representing the 
+              spacial gradient of the vector magnetic field grad(B) at each
+              time step.  Assumed to be the output from the mms_Grad function
+              described in this library module.
+
+    Outputs:
+    CurlB   : A time series array with dimensions t x 3 representing the curl
+              of the vector magnetic field in 3 dimensions at the same time
+              steps as used for hte input Grad array.
+    '''
+    
+    # Define the rank 3 Levi-Civita tensor
+    LevCiv3 = np.zeros((3,3,3))
+    LevCiv3[0,1,2] = LevCiv3[1,2,0] = LevCiv3[2,0,1] = 1
+    LevCiv3[0,2,1] = LevCiv3[2,1,0] = LevCiv3[1,0,2] = -1
+
+    CurlB = np.einsum('ijk,...jk',LevCiv3, Grad)
+
+    return CurlB
+
+
+
+def mms_DivB(Grad):
+    '''
+    Function to calculate the divergence of the magnetic field by taking the
+    trace of the spacial gradient fo the full vector magnetic field (NOTE: 
+    NOT the gradient of the normalized vector magnetic foeld as used in the 
+    curvature vector calculation).
+
+    Inputs:
+    Grad    : A time series array with dimensions t x 3 x 3 representing the 
+              spacial gradient of the vector magnetic field grad(B) at each
+              time step.  Assumed to be the output from the mms_Grad function
+              described in this library module.
+
+    Outputs:
+    DivB    : A time series array with dimension t representing the divergence
+              of the vector magnetic field div(B) at the same time steps as 
+              used for the input Grad array.
+    '''
+
+    #DivB = np.einsum('...ii', Grad)   # Equivalent to taking the trace of grad(B) at each time step
+    DivB = np.trace(np.swapaxes(Grad, 1,2), axis1=1, axis2=2)   
+
+    return DivB
+    
 
 
 
 
 
-# end
