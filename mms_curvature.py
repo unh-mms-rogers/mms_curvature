@@ -35,6 +35,8 @@ np.save("grad_Harvey.npy", grad_Harvey)
 
 ---TJR 10.09.2020
 
+Copyright 2020-2022 Anthony Rogers.  All rights reserved.
+Released under the Apache 2.0 license.
 
 NOTE: Need to update the docstring for mms_Grad after refactoring
 '''

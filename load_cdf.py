@@ -4,9 +4,10 @@
 # which can be found here: https://github.com/MAVENSDC/PyTplot
 #
 # All modifications copyright 2019 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# Released under the Apache 2.0 license.
 #
 # Original copyright notice preserved below for proper attribution.
+
 
 # Copyright 2018 Regents of the University of Colorado. All Rights Reserved.
 # Released under the MIT license.

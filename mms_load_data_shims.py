@@ -1,8 +1,8 @@
 # This file adapted from mms_load_data_shims.py from the pyspedas library,
 # sourced from https://github.com/spedas/pyspedas
 #
-# All modifications copyright 2019 Tim Rogers.  All rights reserved.
-# Released under the MIT license.
+# All modifications copyright 2019-2022 Tim Rogers.  All rights reserved.
+# Released under the Apache 2.0 license.
 
 """
 This module contains routines for loading MMS data
@@ -451,6 +451,7 @@ def mms_load_scm(
     return data,metadata
 
 
+# WARNING:  Until this comment is removed, the following function should be assumed incomplete or non-functional!
 #TODO: Finish rewrite of mms_load_feeps
 def mms_load_feeps(
         trange=['2015-10-16', '2015-10-17'],
@@ -528,41 +529,41 @@ def mms_load_feeps(
             time_clip=time_clip, no_update=no_update)
 
     
+    #probes = probe if isinstance(probe, list) else [probe]
+    #data_rates = data_rate if isinstance(data_rate, list) else [data_rate]
+    #levels = level if isinstance(level, list) else [level]
+    #datatypes = datatype if isinstance(datatype, list) else [datatype]
+    #
+    #probes = [str(p) for p in probes]
+    #
+    ##TODO: Migrate FEEPS-related sub-functions
+    #mms_feeps_correct_energies(probes, data_rate, level=level, suffix=suffix)
+    #
+    #if not no_flatfield_corrections:
+    #    mms_feeps_flat_field_corrections(probes=probes, data_rate=data_rate, suffix=suffix)
+    #
+    #for probe in probes:
+    #    for datatype in datatypes:
+    #       mms_feeps_remove_bad_data(probe=probe, data_rate=data_rate, datatype =datatype, level=level, suffix=suffix)
+    #       
+    #       for data_unit in data_units:
+    #           eyes = mms_feeps_active_eyes(trange, probe, data_rate, datatype, level)
+    #
+    #           mms_feeps_split_integral_ch(data_unit, datatype, probe, suffix=suffix, data_rate=data_rate, level=level, sensor_eyes=eyes)
+    #
+    #           mms_feeps_remove_sun(eyes, trange, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
+    #
+    #           mms_feeps_omni(eyes, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
+    #
+    #           mms_feeps_spin_avg(probe=probe, data_units=data_unit, descriptor=datatype, data_rate=data_rate, level=level, suffix=suffix)
+    #
+    #return tvars
+
     # Returning raw data until FEEPS-related sub-functions get migrated.
     return data,metadata
 
-    
-#    probes = probe if isinstance(probe, list) else [probe]
-#    data_rates = data_rate if isinstance(data_rate, list) else [data_rate]
-#    levels = level if isinstance(level, list) else [level]
-#    datatypes = datatype if isinstance(datatype, list) else [datatype]
-#
-#    probes = [str(p) for p in probes]
-#
-#    #TODO: Migrate FEEPS-related sub-functions
-#    mms_feeps_correct_energies(probes, data_rate, level=level, suffix=suffix)
-#
-#    if not no_flatfield_corrections:
-#        mms_feeps_flat_field_corrections(probes=probes, data_rate=data_rate, suffix=suffix)
-#
-#    for probe in probes:
-#        for datatype in datatypes:
-#           mms_feeps_remove_bad_data(probe=probe, data_rate=data_rate, datatype =datatype, level=level, suffix=suffix)
-#           
-#           for data_unit in data_units:
-#               eyes = mms_feeps_active_eyes(trange, probe, data_rate, datatype, level)
-#
-#               mms_feeps_split_integral_ch(data_unit, datatype, probe, suffix=suffix, data_rate=data_rate, level=level, sensor_eyes=eyes)
-#
-#               mms_feeps_remove_sun(eyes, trange, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
-#
-#               mms_feeps_omni(eyes, probe=probe, descriptor=datatype, data_units=data_unit, data_rate=data_rate, level=level, suffix=suffix)
-#
-#               mms_feeps_spin_avg(probe=probe, data_units=data_unit, descriptor=datatype, data_rate=data_rate, level=level, suffix=suffix)
-#
-#    return tvars
 
-
+# WARNING:  Until this comment is removed, the following function should be assumed incomplete or non-functional!
 # Function migrated from pyspedas: pyspedas/mms/eis/mms_eis_omni.py
 def mms_eis_omni(
         probe,
@@ -638,6 +639,7 @@ def mms_eis_omni(
         #return None
 
 
+# WARNING:  Until this comment is removed, the following function should be assumed incomplete or non-functional!
 def mms_load_eis(
         trange=['2015-10-16', '2015-10-17'],
         probe='1',

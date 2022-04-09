@@ -1,3 +1,11 @@
+# Copyright 2020-2022 Anthony Rogers.  All rights reserved.
+# Released under the Apache 2.0 license.
+
+# This file/script serves as a reference use case for the library it
+# is contained in.  Expect this file to be replaced/rewritten in the
+# future to more accurately and completely reflect library usage.
+# This file is currently retained only for historical reference.
+
 import copy
 import time
 import numpy as np
