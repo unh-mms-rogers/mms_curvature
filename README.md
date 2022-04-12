@@ -25,3 +25,9 @@ Equations and methods used can be found at:
 -----
 ### License
 Released under Apache 2.0 license (see LICENSE file).  Click **[HERE](https://tldrlegal.com/license/apache-license-2.0-(apache-2.0))** for a summary of what is/isn't allowed.
+
+
+
+[![DOI](https://zenodo.org/badge/187900473.svg)](https://zenodo.org/badge/latestdoi/187900473)
+
+
