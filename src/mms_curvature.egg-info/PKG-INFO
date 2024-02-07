@@ -1,13 +1,25 @@
+Metadata-Version: 2.1
+Name: mms_curvature
+Version: 0.8.0
+Summary: Calculate the magnetic field curvature at the mesocenter of the MMS fleet in tetrahedron formation.
+Home-page: https://github.com/daneah/publishing-python-packages
+Author: Anthony Rogers
+Author-email: "Anthony Rogers" <arogers@lanl.gov>
+License: Apache Software License
+Classifier: License :: OSI Approved :: Apache Software License
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests
+Requires-Dist: cdflib
+Requires-Dist: numpy
+Requires-Dist: python-dateutil
+Requires-Dist: pandas
+
 # mms-curvature
 Python3 routines for calculating the magnetic field curvature at the mesocenter of the MMS fleet in tetrahedron formation.
 
 Also contains basic functions for loading various instrument data from MMS spacecraft, calculating spacial gradients over time, and deriving the curl and divergence from such gradients.
-
-## Install
-```shell
-cd mms-curvature/
-python3 -m pip install .  # with the period
-```
 
 ## Version 0.8
 Harvey curvature vector is calculated.  Returns numpy arrays of:
