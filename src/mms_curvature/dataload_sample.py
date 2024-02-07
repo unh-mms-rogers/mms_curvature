@@ -21,10 +21,19 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
                 Options are 'srvy', 'brst'
 
     level:      The data level which will be loaded.  Use 'l2' unless you're sure otherwise.
-
     '''
-    # load data files from SDC/local storage into tplot variables
-    mec_data = pyspedas.mms.mec(trange=trange, probe=['1', '2', '3', '4'], data_rate='srvy', level=level, time_clip=True)
-    fgm_data = pyspedas.mms.fgm(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, level=level, time_clip=True)
-    # This  is just a convenient structure for returning the imported data.
+    mec_data = pyspedas.mms.mec(
+        trange=trange, 
+        probe=['1', '2', '3', '4'], 
+        data_rate='srvy', 
+        level=level, 
+        time_clip=True
+    )
+    fgm_data = pyspedas.mms.fgm(
+        trange=trange, 
+        probe=['1', '2', '3', '4'], 
+        data_rate=data_rate, 
+        level=level, 
+        time_clip=True
+        )
     return {"mec": mec_data, "fgm": fgm_data}

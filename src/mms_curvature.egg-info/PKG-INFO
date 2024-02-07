@@ -13,7 +13,6 @@ License-File: LICENSE
 Requires-Dist: requests
 Requires-Dist: cdflib
 Requires-Dist: numpy
-Requires-Dist: python-dateutil
 Requires-Dist: pandas
 
 # mms-curvature

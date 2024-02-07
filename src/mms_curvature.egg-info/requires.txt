@@ -1,5 +1,4 @@
 requests
 cdflib
 numpy
-python-dateutil
 pandas
