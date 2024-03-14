@@ -9,7 +9,7 @@
 ### Added
 - An example and install instructions to the `README.md`.
 - A `CHANGELOG.md` (this file).
-- A `__init__.py` file to import the relevant functions in the top-level namespace.
+- A `__init__.py` file to import the relevant functions in the top-level namespace. For example, you can calculate the curvature by calling `mms_curvature.mms_Curvature(...)`.
 
 ### Removed
 - `mms_load_data_shims.py` because pyspedas has this functionality already.
