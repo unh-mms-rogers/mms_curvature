@@ -3,7 +3,10 @@ Python3 routines for calculating the magnetic field curvature at the mesocenter 
 
 Also contains basic functions for loading various instrument data from MMS spacecraft, calculating spacial gradients over time, and deriving the curl and divergence from such gradients.
 
-## Version 0.8
+## Version 0.9
+
+**NIX ALL OF THE BLOW AND UPDATE WITH ACTUALL USAGE GUIDE**
+
 Harvey curvature vector is calculated.  Returns numpy arrays of:
 
 - *t_master* => time series in unix time of the interpolated times for which the curvature is calculated
