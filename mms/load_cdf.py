@@ -87,7 +87,11 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
     for filename in filenames:
         cdf_file = cdflib.CDF(filename)
         cdf_info = cdf_file.cdf_info()
-        all_cdf_variables = cdf_info['rVariables'] + cdf_info['zVariables']
+        try:
+            all_cdf_variables = cdf_info['rVariables'] + cdf_info['zVariables']
+        except:
+            all_cdf_variables = cdf_info.rVariables + cdf_info.zVariables
+            # Added to handle change in CDFlib API
 
         # Find the data variables
         for var in all_cdf_variables:
@@ -110,8 +114,13 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                         print("No attribute named DEPEND_TIME or DEPEND_0 in \
                           variable " + var)
                     continue
-                data_type_description \
-                    = cdf_file.varinq(x_axis_var)['Data_Type_Description']
+                try:
+                    data_type_description \
+                            = cdf_file.varinq(x_axis_var)['Data_Type_Description']
+                except:
+                    data_type_description \
+                            = cdf_file.varinq(x_axis_var).Data_Type_Description
+
 
                 # Find data name and if it is already in stored variables
                 var_name = prefix + var + suffix
@@ -187,15 +196,27 @@ def load_cdf(filenames, varformat=None, get_support_data=False,
                 if ydata is None:
                     continue
                 if "FILLVAL" in var_atts:
-                    if (var_properties['Data_Type_Description'] == 'CDF_FLOAT'
-                        or var_properties['Data_Type_Description']
-                        == 'CDF_REAL4'
-                        or var_properties['Data_Type_Description']
-                        == 'CDF_DOUBLE'
-                        or var_properties['Data_Type_Description']
-                        == 'CDF_REAL8'):
-                        if ydata[ydata == var_atts["FILLVAL"]].size != 0:
-                            ydata[ydata == var_atts["FILLVAL"]] = np.nan
+                    try:
+                        if (var_properties['Data_Type_Description'] == 'CDF_FLOAT'
+                            or var_properties['Data_Type_Description']
+                            == 'CDF_REAL4'
+                            or var_properties['Data_Type_Description']
+                            == 'CDF_DOUBLE'
+                            or var_properties['Data_Type_Description']
+                            == 'CDF_REAL8'):
+                            if ydata[ydata == var_atts["FILLVAL"]].size != 0:
+                                ydata[ydata == var_atts["FILLVAL"]] = np.nan
+                    except:
+                        if (var_properties.Data_Type_Description == 'CDF_FLOAT'
+                            or var_properties.Data_Type_Description
+                            == 'CDF_REAL4'
+                            or var_properties.Data_Type_Description
+                            == 'CDF_DOUBLE'
+                            or var_properties.Data_Type_Description
+                            == 'CDF_REAL8'):
+                            if ydata[ydata == var_atts["FILLVAL"]].size != 0:
+                                ydata[ydata == var_atts["FILLVAL"]] = np.nan
+
                 
                 axis_data = {'x': xdata, 'y': ydata}
 
