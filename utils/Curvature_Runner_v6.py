@@ -532,12 +532,59 @@ def save_results(curvedf, filename, save_csv=True, save_h5=False):
         curvedf.to_hdf(filename[:-3] + 'h5', key='df')
 
 
-def main():
-    timeStart = time.strftime("%H:%M:%S", time.localtime())
-    print("Files Loading:")
+def _prompt(label, current):
+    '''Display current value of a parameter and return user input or current value.'''
+    response = input(f"  {label} [{current}]: ").strip()
+    return response if response else current
 
+
+def _prompt_bool(label, current):
+    '''Display current boolean parameter and return user-confirmed value.'''
+    display = 'y' if current else 'n'
+    response = input(f"  {label} [{display}] (y/n): ").strip().lower()
+    if response == '':
+        return current
+    return response == 'y'
+
+
+def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
+    '''
+    Display current run parameters and allow the user to confirm or modify
+    each one interactively.  Returns the (possibly updated) parameter set.
+    '''
+    print("\n--- Run Parameters ---")
+    print(f"  trange start : {trange[0]}")
+    print(f"  trange end   : {trange[1]}")
+    print(f"  data_rate    : {data_rate}")
+    print(f"  prefix       : {prefix}")
+    print(f"  suffix       : {suffix}")
+    print(f"  save_csv     : {save_csv}")
+    print(f"  save_h5      : {save_h5}")
+    print("\nPress Enter to keep each value, or type a new one.")
+
+    trange    = [_prompt("trange start", trange[0]),
+                 _prompt("trange end",   trange[1])]
+    data_rate = _prompt("data_rate (srvy/brst)", data_rate)
+    prefix    = _prompt("prefix",   prefix)
+    suffix    = _prompt("suffix",   suffix)
+    save_csv  = _prompt_bool("save_csv", save_csv)
+    save_h5   = _prompt_bool("save_h5",  save_h5)
+
+    print("\n--- Confirmed Parameters ---")
+    print(f"  trange    : {trange}")
+    print(f"  data_rate : {data_rate}")
+    print(f"  prefix    : {prefix}")
+    print(f"  suffix    : {suffix}")
+    print(f"  save_csv  : {save_csv}")
+    print(f"  save_h5   : {save_h5}")
+    print()
+
+    return trange, data_rate, prefix, suffix, save_csv, save_h5
+
+
+def main():
     ####################################################
-    # Set parameters here
+    # Default parameters
     trange     = ['2020-08-02/16:40', '2020-08-02/17:30']
     data_rate  = 'brst'
     prefix     = "~/Work/Curvature/testruns/CurveGSM_rg_"
@@ -546,6 +593,12 @@ def main():
     save_h5    = False
     num_probes = 4
     ####################################################
+
+    trange, data_rate, prefix, suffix, save_csv, save_h5 = _confirm_parameters(
+        trange, data_rate, prefix, suffix, save_csv, save_h5)
+
+    timeStart = time.strftime("%H:%M:%S", time.localtime())
+    print("Files Loading:")
 
     filename = generate_filename(trange, prefix, suffix)
 
