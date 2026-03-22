@@ -6,8 +6,7 @@ import time
 import numpy as np
 import pandas as pd
 from mms_curvature.mms_curvature import mms_Grad, mms_Curvature, mms_CurlB, mms_DivB
-from mms_curvature.mms_load_data_shims import mms_load_fgm, mms_load_ancillary
-from mms_curvature.utils.mms_gyroradius import DataLoadMoments, CalcRadius
+from mms_curvature.mms_load_data_shims import mms_load_fgm, mms_load_fpi, mms_load_ancillary
 
 
 def mesoGyroradius(trange=['2017-05-28', '2017-05-29'], data_rate='srvy', level='l2', t_master=None, bmag=None):
@@ -26,38 +25,59 @@ def mesoGyroradius(trange=['2017-05-28', '2017-05-29'], data_rate='srvy', level=
 
     outputs:
     (r_i, r_e) -- 2-element structure aligned with t_master time series where:
-        r_i:        average gyroradius of ions (assumed protons)
-        r_e:        average gyroradius of electrons
+        r_i:        average gyroradius of ions (assumed protons) in meters
+        r_e:        average gyroradius of electrons in meters
     '''
 
     me = 9.1094e-31     # electron mass in kilograms
     mp = 1.6726e-27     # proton mass in kg; used as proxy for all ions
+    q  = 1.602177e-19   # elementary charge in Coulombs
 
-    distime1, distempperp1, destime1, destempperp1 = DataLoadMoments(trange=trange, data_rate=data_rate, level='l2', probe='1')
-    distime2, distempperp2, destime2, destempperp2 = DataLoadMoments(trange=trange, data_rate=data_rate, level='l2', probe='2')
-    distime3, distempperp3, destime3, destempperp3 = DataLoadMoments(trange=trange, data_rate=data_rate, level='l2', probe='3')
+    # FPI uses 'fast' for survey mode; 'brst' maps directly
+    fpirate = 'fast' if data_rate == 'srvy' else data_rate
 
-    mitime = distime1   # master ion time
-    distempperp2 = np.interp(mitime, distime2, distempperp2)
-    distempperp3 = np.interp(mitime, distime3, distempperp3)
+    # Load FPI moments for probes 1-3
+    ion_times  = []
+    ion_tperp  = []
+    elec_times = []
+    elec_tperp = []
+    for probe in ['1', '2', '3']:
+        fpidata, _ = mms_load_fpi(trange=trange, probe=probe, data_rate=fpirate, level=level,
+                                   datatype=['dis-moms', 'des-moms'], time_clip=True)
+        ion_times.append(fpidata['mms' + probe + '_dis_tempperp_' + fpirate]['x'])
+        ion_tperp.append(fpidata['mms' + probe + '_dis_tempperp_' + fpirate]['y'])
+        elec_times.append(fpidata['mms' + probe + '_des_tempperp_' + fpirate]['x'])
+        elec_tperp.append(fpidata['mms' + probe + '_des_tempperp_' + fpirate]['y'])
 
-    metime = destime1   # master electron time
-    destempperp2 = np.interp(metime, destime2, destempperp2)
-    destempperp3 = np.interp(metime, destime3, destempperp3)
+    mitime = ion_times[0]   # master ion time (mms1)
+    metime = elec_times[0]  # master electron time (mms1)
+
+    # Interpolate probes 2 and 3 onto mms1 time grid
+    for i in range(1, 3):
+        ion_tperp[i]  = np.interp(mitime, ion_times[i],  ion_tperp[i])
+        elec_tperp[i] = np.interp(metime, elec_times[i], elec_tperp[i])
 
     try:
-        distime4, distempperp4, destime4, destempperp4 = DataLoadMoments(trange=trange, data_rate=data_rate, level='l2', probe='4')
-        distempperp4 = np.interp(mitime, distime4, distempperp4)
-        destempperp4 = np.interp(metime, destime4, destempperp4)
-        tiperp = np.average([distempperp1, distempperp2, distempperp3, distempperp4], axis=0)
-        teperp = np.average([destempperp1, destempperp2, destempperp3, destempperp4], axis=0)
+        fpidata4, _ = mms_load_fpi(trange=trange, probe='4', data_rate=fpirate, level=level,
+                                    datatype=['dis-moms', 'des-moms'], time_clip=True)
+        ion_tperp4  = np.interp(mitime, fpidata4['mms4_dis_tempperp_' + fpirate]['x'],
+                                         fpidata4['mms4_dis_tempperp_' + fpirate]['y'])
+        elec_tperp4 = np.interp(metime, fpidata4['mms4_des_tempperp_' + fpirate]['x'],
+                                          fpidata4['mms4_des_tempperp_' + fpirate]['y'])
+        tiperp = np.average([ion_tperp[0],  ion_tperp[1],  ion_tperp[2],  ion_tperp4],  axis=0)
+        teperp = np.average([elec_tperp[0], elec_tperp[1], elec_tperp[2], elec_tperp4], axis=0)
     except:
         print('Error in loading mms4 data.  Will drop mms4 from this dataset.')
-        tiperp = np.average([distempperp1, distempperp2, distempperp3], axis=0)
-        teperp = np.average([destempperp1, destempperp2, destempperp3], axis=0)
+        tiperp = np.average([ion_tperp[0],  ion_tperp[1],  ion_tperp[2]],  axis=0)
+        teperp = np.average([elec_tperp[0], elec_tperp[1], elec_tperp[2]], axis=0)
 
-    r_i = CalcRadius(part_time=mitime, part_tempperp=tiperp, b_time=t_master, b_mag=bmag, part_mass=mp, part_q=1.602177e-19)
-    r_e = CalcRadius(part_time=metime, part_tempperp=teperp, b_time=t_master, b_mag=bmag, part_mass=me, part_q=1.602177e-19)
+    # Interpolate averaged T_perp to t_master and calculate gyroradii.
+    # Assumes tperp in eV and bmag in nT; result is in meters.
+    tiperp_m = np.interp(t_master, mitime, tiperp)
+    teperp_m = np.interp(t_master, metime, teperp)
+
+    r_i = np.sqrt(2 * mp * 11605 * 1.38649e-23) / (1e-9 * q) * np.sqrt(tiperp_m) / bmag
+    r_e = np.sqrt(2 * me * 11605 * 1.38649e-23) / (1e-9 * q) * np.sqrt(teperp_m) / bmag
 
     return (r_i, r_e)
 
