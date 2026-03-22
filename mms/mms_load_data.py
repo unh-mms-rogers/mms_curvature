@@ -246,7 +246,7 @@ def mms_load_data(trange=['2015-10-16', '2015-10-17'], probe='1', data_rate='srv
                 raise TypeError('Failure to merge new data with axes ('+(','.join(data.columns))+') with existing data with axes ('+(','.join((new_variables[dataset].keys())))+')'+'.')
             
             # Update existing dataset entry with the additional data.
-            new_variables[dataset] = new_variables[dataset].append(data)
+            new_variables[dataset] = pd.concat([new_variables[dataset], data])
       else:
         # Direct loaded from CDF.
         for dataset in data.keys():
