@@ -6,7 +6,7 @@ import time
 import numpy as np
 import pandas as pd
 from mms_curvature.mms_curvature import mms_Grad, mms_Curvature, mms_CurlB, mms_DivB
-from mms_curvature.mms_load_data_shims import mms_load_fgm, mms_load_fpi, mms_load_ancillary
+from mms_curvature.mms.mms_load_data_shims import mms_load_fgm, mms_load_fpi, mms_load_ancillary
 
 
 def mesoGyroradius(fpidata, fpirate, t_master=None, bmag=None):
