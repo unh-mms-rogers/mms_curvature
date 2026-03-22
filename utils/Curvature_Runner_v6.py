@@ -73,6 +73,96 @@ def mesoGyroradius(fpidata, fpirate, t_master=None, bmag=None):
     return (r_i, r_e)
 
 
+def calc_plasma_beta(fpidata, fpirate, t_master, Bmag_0):
+    '''
+    Calculate ion, electron, and total plasma beta averaged across the
+    MMS tetrahedron, using pre-loaded FPI moments and FGM field magnitude.
+
+    Beta is the ratio of plasma thermal pressure to magnetic pressure:
+        beta = (n * k_B * T) / (B^2 / 2*mu_0)
+
+    Temperatures used are T_perp from FPI moments (eV).  For a more
+    rigorous result the full scalar temperature should be substituted.
+    Density and temperature are averaged across all available probes;
+    mms4 is included automatically if present in fpidata.
+
+    inputs:
+    fpidata:    dict of pre-loaded FPI moments data as returned by load_fpi_data
+    fpirate:    FPI data rate string ('fast' or 'brst'), as returned by load_fpi_data
+    t_master:   master time series aligned with Bmag_0 (from calc_nominal)
+    Bmag_0:     mean |B| in nT aligned with t_master (from calc_nominal)
+
+    outputs:
+    (beta_i, beta_e, beta_total) -- arrays aligned with t_master
+    '''
+    mu0 = 4 * np.pi * 1e-7   # permeability of free space (H/m)
+    q   = 1.602177e-19        # elementary charge (C)
+
+    # Collect density and T_perp for probes 1-3
+    ion_n_t  = [];  ion_n  = []
+    ion_tp_t = [];  ion_tp = []
+    elec_n_t = [];  elec_n = []
+    elec_tp_t= [];  elec_tp= []
+
+    for p in ['1', '2', '3']:
+        pref = 'mms' + p + '_'
+        ion_n_t.append(  fpidata[pref + 'dis_numberdensity_' + fpirate]['x'])
+        ion_n.append(    fpidata[pref + 'dis_numberdensity_' + fpirate]['y'])
+        ion_tp_t.append( fpidata[pref + 'dis_tempperp_'      + fpirate]['x'])
+        ion_tp.append(   fpidata[pref + 'dis_tempperp_'      + fpirate]['y'])
+        elec_n_t.append( fpidata[pref + 'des_numberdensity_' + fpirate]['x'])
+        elec_n.append(   fpidata[pref + 'des_numberdensity_' + fpirate]['y'])
+        elec_tp_t.append(fpidata[pref + 'des_tempperp_'      + fpirate]['x'])
+        elec_tp.append(  fpidata[pref + 'des_tempperp_'      + fpirate]['y'])
+
+    # mms1 as master time for each quantity
+    mi_n_t  = ion_n_t[0];   mi_tp_t = ion_tp_t[0]
+    me_n_t  = elec_n_t[0];  me_tp_t = elec_tp_t[0]
+
+    # Interpolate probes 2 and 3 onto mms1 time grid
+    for i in range(1, 3):
+        ion_n[i]  = np.interp(mi_n_t,  ion_n_t[i],   ion_n[i])
+        ion_tp[i] = np.interp(mi_tp_t, ion_tp_t[i],  ion_tp[i])
+        elec_n[i] = np.interp(me_n_t,  elec_n_t[i],  elec_n[i])
+        elec_tp[i]= np.interp(me_tp_t, elec_tp_t[i], elec_tp[i])
+
+    # Include mms4 if it was successfully loaded
+    if 'mms4_dis_numberdensity_' + fpirate in fpidata:
+        ion_n.append( np.interp(mi_n_t,  fpidata['mms4_dis_numberdensity_' + fpirate]['x'],
+                                          fpidata['mms4_dis_numberdensity_' + fpirate]['y']))
+        ion_tp.append(np.interp(mi_tp_t, fpidata['mms4_dis_tempperp_'      + fpirate]['x'],
+                                          fpidata['mms4_dis_tempperp_'      + fpirate]['y']))
+        elec_n.append( np.interp(me_n_t,  fpidata['mms4_des_numberdensity_' + fpirate]['x'],
+                                           fpidata['mms4_des_numberdensity_' + fpirate]['y']))
+        elec_tp.append(np.interp(me_tp_t, fpidata['mms4_des_tempperp_'      + fpirate]['x'],
+                                           fpidata['mms4_des_tempperp_'      + fpirate]['y']))
+
+    # Average across all available probes
+    ni_avg = np.average(ion_n,  axis=0)   # cm^-3
+    ti_avg = np.average(ion_tp, axis=0)   # eV
+    ne_avg = np.average(elec_n, axis=0)   # cm^-3
+    te_avg = np.average(elec_tp,axis=0)   # eV
+
+    # Interpolate averaged quantities to t_master
+    ni = np.interp(t_master, mi_n_t,  ni_avg)
+    ti = np.interp(t_master, mi_tp_t, ti_avg)
+    ne = np.interp(t_master, me_n_t,  ne_avg)
+    te = np.interp(t_master, me_tp_t, te_avg)
+
+    # Magnetic pressure (Pa): B in nT -> SI
+    P_mag = (Bmag_0 * 1e-9)**2 / (2 * mu0)
+
+    # Plasma pressure (Pa): n in cm^-3 -> SI, T in eV -> J
+    P_ion  = (ni * 1e6) * (ti * q)
+    P_elec = (ne * 1e6) * (te * q)
+
+    beta_i     = P_ion  / P_mag
+    beta_e     = P_elec / P_mag
+    beta_total = (P_ion + P_elec) / P_mag
+
+    return beta_i, beta_e, beta_total
+
+
 def generate_filename(trange, prefix, suffix):
     '''
     Generate a sane output filename from trange, prefix, and suffix.
@@ -354,7 +444,7 @@ def combine_uncertainties(r_uncertainty_grad_n, r_uncertainty_curve, r_uncertain
 
 def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i, r_e,
                     curl_0, sum_uncertainty_curl, div_0, sum_uncertainty_div,
-                    uncertainty_rb_ratio_n):
+                    uncertainty_rb_ratio_n, beta_i, beta_e, beta_total):
     '''
     Build the output pandas DataFrame from all computed quantities.
 
@@ -371,6 +461,9 @@ def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i,
     div_0:                  nominal divergence of B array (n,)
     sum_uncertainty_div:    total divergence uncertainty array (n,)
     uncertainty_rb_ratio_n: ratio of positional to magnetometer uncertainty norm (n,)
+    beta_i:                 ion plasma beta array (n,)
+    beta_e:                 electron plasma beta array (n,)
+    beta_total:             total plasma beta array (n,)
 
     outputs:
     curvedf:    pandas DataFrame with Time index and all computed columns
@@ -414,6 +507,9 @@ def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i,
         'error_curlz':      sum_uncertainty_curl.take(2, axis=1),
         'div(B)':           div_0,
         'error_div(B)':     sum_uncertainty_div,
+        'beta_i':           beta_i,
+        'beta_e':           beta_e,
+        'beta_total':       beta_total,
     }, index=t_master)
     curvedf.index.name = "Time"
     return curvedf
@@ -490,9 +586,14 @@ def main():
     r_i = r_i / 1000
     r_e = r_e / 1000   # Convert from meters to km
 
+    print("Calculating plasma beta...")
+    beta_i, beta_e, beta_total = calc_plasma_beta(fpidata=fpidata, fpirate=fpirate,
+                                                   t_master=t_master, Bmag_0=Bmag_0)
+
     curvedf = build_dataframe(
         t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i, r_e,
-        curl_0, sum_uncertainty_curl, div_0, sum_uncertainty_div, uncertainty_rb_ratio_n)
+        curl_0, sum_uncertainty_curl, div_0, sum_uncertainty_div, uncertainty_rb_ratio_n,
+        beta_i, beta_e, beta_total)
 
     save_results(curvedf, filename, save_csv=save_csv, save_h5=save_h5)
 
