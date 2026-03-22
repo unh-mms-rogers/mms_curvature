@@ -9,16 +9,14 @@ from mms_curvature.mms_curvature import mms_Grad, mms_Curvature, mms_CurlB, mms_
 from mms_curvature.mms_load_data_shims import mms_load_fgm, mms_load_fpi, mms_load_ancillary
 
 
-def mesoGyroradius(trange=['2017-05-28', '2017-05-29'], data_rate='srvy', level='l2', t_master=None, bmag=None):
+def mesoGyroradius(fpidata, fpirate, t_master=None, bmag=None):
     '''
     Calculates the average gyroradius in the tetrahedron, assumed to be
     representative of the gyroradius at the mesocenter.  Uses FPI data.
 
     inputs:
-    trange:     2-element list of strings for start and end times
-                ex.['2017-05-28', '2017-05-29/12:02:01']
-    data_rate:  Choices are 'srvy' or 'brst'
-    level:      data level to use.  Use 'l2' unless you know for sure
+    fpidata:    dict of pre-loaded FPI moments data as returned by load_fpi_data
+    fpirate:    FPI data rate string ('fast' or 'brst'), as returned by load_fpi_data
     t_master:   Time series for the magnetic field data, assumed from
                 mms_curvature.Curvature
     bmag:       |B| aligned with t_master.  Assumed from mms_curvature.Curvature
@@ -33,17 +31,12 @@ def mesoGyroradius(trange=['2017-05-28', '2017-05-29'], data_rate='srvy', level=
     mp = 1.6726e-27     # proton mass in kg; used as proxy for all ions
     q  = 1.602177e-19   # elementary charge in Coulombs
 
-    # FPI uses 'fast' for survey mode; 'brst' maps directly
-    fpirate = 'fast' if data_rate == 'srvy' else data_rate
-
-    # Load FPI moments for probes 1-3
+    # Extract time and T_perp for probes 1-3 (always present)
     ion_times  = []
     ion_tperp  = []
     elec_times = []
     elec_tperp = []
     for probe in ['1', '2', '3']:
-        fpidata, _ = mms_load_fpi(trange=trange, probe=probe, data_rate=fpirate, level=level,
-                                   datatype=['dis-moms', 'des-moms'], time_clip=True)
         ion_times.append(fpidata['mms' + probe + '_dis_tempperp_' + fpirate]['x'])
         ion_tperp.append(fpidata['mms' + probe + '_dis_tempperp_' + fpirate]['y'])
         elec_times.append(fpidata['mms' + probe + '_des_tempperp_' + fpirate]['x'])
@@ -57,17 +50,15 @@ def mesoGyroradius(trange=['2017-05-28', '2017-05-29'], data_rate='srvy', level=
         ion_tperp[i]  = np.interp(mitime, ion_times[i],  ion_tperp[i])
         elec_tperp[i] = np.interp(metime, elec_times[i], elec_tperp[i])
 
-    try:
-        fpidata4, _ = mms_load_fpi(trange=trange, probe='4', data_rate=fpirate, level=level,
-                                    datatype=['dis-moms', 'des-moms'], time_clip=True)
-        ion_tperp4  = np.interp(mitime, fpidata4['mms4_dis_tempperp_' + fpirate]['x'],
-                                         fpidata4['mms4_dis_tempperp_' + fpirate]['y'])
-        elec_tperp4 = np.interp(metime, fpidata4['mms4_des_tempperp_' + fpirate]['x'],
-                                          fpidata4['mms4_des_tempperp_' + fpirate]['y'])
+    # Include mms4 if it was successfully loaded
+    if 'mms4_dis_tempperp_' + fpirate in fpidata:
+        ion_tperp4  = np.interp(mitime, fpidata['mms4_dis_tempperp_' + fpirate]['x'],
+                                         fpidata['mms4_dis_tempperp_' + fpirate]['y'])
+        elec_tperp4 = np.interp(metime, fpidata['mms4_des_tempperp_' + fpirate]['x'],
+                                          fpidata['mms4_des_tempperp_' + fpirate]['y'])
         tiperp = np.average([ion_tperp[0],  ion_tperp[1],  ion_tperp[2],  ion_tperp4],  axis=0)
         teperp = np.average([elec_tperp[0], elec_tperp[1], elec_tperp[2], elec_tperp4], axis=0)
-    except:
-        print('Error in loading mms4 data.  Will drop mms4 from this dataset.')
+    else:
         tiperp = np.average([ion_tperp[0],  ion_tperp[1],  ion_tperp[2]],  axis=0)
         teperp = np.average([elec_tperp[0], elec_tperp[1], elec_tperp[2]], axis=0)
 
@@ -128,6 +119,36 @@ def load_fgm_data(trange, data_rate, num_probes=4):
         pos_values[probe] = np.copy(fgmdata[key + 'r_gsm_' + data_rate + '_l2']['y'])
         b_values[probe]   = np.copy(fgmdata[key + 'b_gsm_' + data_rate + '_l2']['y'])
     return pos_times, b_times, pos_values, b_values
+
+
+def load_fpi_data(trange, data_rate, level='l2'):
+    '''
+    Load FPI moments (dis-moms, des-moms) for all probes.  Probes 1-3 are
+    always loaded; probe 4 is attempted and silently dropped on failure.
+
+    inputs:
+    trange:     2-element list of start/end time strings
+    data_rate:  'srvy' or 'brst'
+    level:      data level (default 'l2')
+
+    outputs:
+    (fpidata, fpirate) where:
+        fpidata:    merged dict of all successfully loaded FPI variables
+        fpirate:    FPI data rate string used ('fast' or 'brst')
+    '''
+    fpirate = 'fast' if data_rate == 'srvy' else data_rate
+    fpidata = {}
+    for probe in ['1', '2', '3']:
+        data, _ = mms_load_fpi(trange=trange, probe=probe, data_rate=fpirate, level=level,
+                               datatype=['dis-moms', 'des-moms'], time_clip=True)
+        fpidata.update(data)
+    try:
+        data4, _ = mms_load_fpi(trange=trange, probe='4', data_rate=fpirate, level=level,
+                                datatype=['dis-moms', 'des-moms'], time_clip=True)
+        fpidata.update(data4)
+    except:
+        print('Error loading mms4 FPI data.  Will drop mms4 from this dataset.')
+    return fpidata, fpirate
 
 
 def load_positional_uncertainty(trange, num_probes, pos_times):
@@ -437,6 +458,9 @@ def main():
     print("Time started: ", timeStart)
     print("Time FGM Loaded: ", fgm_load_done_time)
 
+    fpidata, fpirate = load_fpi_data(trange, data_rate)
+    print("Time FPI Loaded: ", time.strftime("%H:%M:%S", time.localtime()))
+
     print("Collecting positional uncertainties...")
     outRerr = load_positional_uncertainty(trange, num_probes, pos_times)
 
@@ -462,7 +486,7 @@ def main():
     print("Done calculating Curvature.")
 
     print("Calculating gyroradii...")
-    r_i, r_e = mesoGyroradius(trange=trange, data_rate=data_rate, level='l2', t_master=t_master, bmag=Bmag_0)
+    r_i, r_e = mesoGyroradius(fpidata=fpidata, fpirate=fpirate, t_master=t_master, bmag=Bmag_0)
     r_i = r_i / 1000
     r_e = r_e / 1000   # Convert from meters to km
 
