@@ -669,10 +669,10 @@ def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
 def main():
     ####################################################
     # Default parameters
-    trange     = ['2020-08-02/16:40', '2020-08-02/17:30']
-    data_rate  = 'brst'
-    prefix     = "~/Work/Curvature/testruns/CurveGSM_rg_"
-    suffix     = "_sigma_v5.2"
+    trange     = ['2020-08-01', '2020-08-05']
+    data_rate  = 'srvy'
+    prefix     = "~/Work/MMS_work/CurveGSM_"
+    suffix     = "_v6.2"
     save_csv   = True
     save_h5    = False
     num_probes = 4
