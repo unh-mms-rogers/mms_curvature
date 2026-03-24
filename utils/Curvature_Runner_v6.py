@@ -163,6 +163,68 @@ def calc_plasma_beta(fpidata, fpirate, t_master, Bmag_0):
     return beta_i, beta_e, beta_total
 
 
+def calc_perp_ion_velocity(fpidata, fpirate, t_master, bm_0):
+    '''
+    Calculate the magnitude of the ion bulk velocity component perpendicular
+    to the magnetic field, averaged across the MMS tetrahedron.
+
+    The perpendicular velocity is computed as:
+        v_perp = v - (v . b_hat) * b_hat
+    where b_hat is the mean normalized magnetic field unit vector (bm_0).
+
+    inputs:
+    fpidata:    dict of pre-loaded FPI moments data as returned by load_fpi_data
+    fpirate:    FPI data rate string ('fast' or 'brst'), as returned by load_fpi_data
+    t_master:   master time series aligned with bm_0 (from calc_nominal)
+    bm_0:       mean normalized B unit vector array (n, 3) from calc_nominal
+
+    outputs:
+    v_perp_mag: magnitude of perpendicular ion bulk velocity in km/s,
+                aligned with t_master
+    '''
+
+    # Collect bulk velocity vectors for probes 1-3
+    v_times = []
+    v_vals  = []
+    for p in ['1', '2', '3']:
+        pref = 'mms' + p + '_'
+        v_times.append(fpidata[pref + 'dis_bulkv_' + fpirate]['x'])
+        v_vals.append( fpidata[pref + 'dis_bulkv_' + fpirate]['y'])
+
+    mitime = v_times[0]
+
+    # Interpolate probes 2 and 3 onto mms1 time grid (component-wise)
+    for i in range(1, 3):
+        v_interp = np.zeros_like(v_vals[0])
+        for dim in range(3):
+            v_interp[:, dim] = np.interp(mitime, v_times[i], v_vals[i][:, dim])
+        v_vals[i] = v_interp
+
+    # Include mms4 if it was successfully loaded
+    if 'mms4_dis_bulkv_' + fpirate in fpidata:
+        v4 = fpidata['mms4_dis_bulkv_' + fpirate]
+        v_interp4 = np.zeros_like(v_vals[0])
+        for dim in range(3):
+            v_interp4[:, dim] = np.interp(mitime, v4['x'], v4['y'][:, dim])
+        v_vals.append(v_interp4)
+
+    # Average across all available probes
+    v_avg = np.average(v_vals, axis=0)   # shape (n_fpi, 3), km/s
+
+    # Interpolate averaged velocity to t_master (component-wise)
+    v_master = np.zeros((len(t_master), 3))
+    for dim in range(3):
+        v_master[:, dim] = np.interp(t_master, mitime, v_avg[:, dim])
+
+    # Remove parallel component: v_perp = v - (v . b_hat) * b_hat
+    v_dot_b    = np.sum(v_master * bm_0, axis=1)     # scalar projection onto B
+    v_para     = v_dot_b[:, np.newaxis] * bm_0        # parallel component vector
+    v_perp     = v_master - v_para                    # perpendicular component vector
+    v_perp_mag = np.linalg.norm(v_perp, axis=1)       # magnitude in km/s
+
+    return v_perp_mag
+
+
 def generate_filename(trange, prefix, suffix):
     '''
     Generate a sane output filename from trange, prefix, and suffix.
@@ -241,30 +303,38 @@ def load_fpi_data(trange, data_rate, level='l2'):
     return fpidata, fpirate
 
 
-def load_positional_uncertainty(trange, num_probes, pos_times):
+def load_positional_uncertainty(trange, num_probes, t_master):
     '''
     Load DEFERR ancillary positional uncertainty data and interpolate onto
-    the FGM position time grid.
+    t_master -- the authoritative time grid produced by calc_nominal --
+    following the same component-wise np.interp approach used by mms_Grad_RV
+    for magnetic field data.  Each probe's DEFERR array is interpolated
+    directly without first converting the per-probe list to a numpy array,
+    avoiding inhomogeneous-shape failures when probes have different numbers
+    of DEFERR time points.
 
     inputs:
     trange:     2-element list of start/end time strings
     num_probes: number of MMS probes
-    pos_times:  list of position time arrays (one per probe)
+    t_master:   master time array as returned by calc_nominal
 
     outputs:
-    outRerr:    array of shape (num_probes, n_times, 4) with positional
-                uncertainty in kilometers
+    outRerr:    array of shape (num_probes, len(t_master), 4) with positional
+                uncertainty in kilometers, aligned with t_master
     '''
     deferr_in = mms_load_ancillary(probe=['1', '2', '3', '4'], anc_product='deferr', trange=trange, time_clip=True)
     Rerr_arr = [None] * num_probes
     for probe in range(1, num_probes + 1):
         Rerr_arr[probe - 1] = deferr_in[0]["MMS" + str(probe) + "_DEFERR"].to_numpy()
 
-    tmpRerr = np.asarray(Rerr_arr)
-    outRerr = np.ndarray((num_probes, np.asarray(pos_times).shape[1], 4))
+    # Interpolate each probe's DEFERR component-wise directly onto t_master.
+    # Rerr_arr[bird] is kept as a list of per-probe arrays to avoid the
+    # inhomogeneous-shape issue that arises from np.asarray() when probe
+    # DEFERR arrays have differing lengths.
+    outRerr = np.ndarray((num_probes, len(t_master), 4))
     for bird in range(num_probes):
         for dim in range(4):
-            outRerr[bird, :, dim] = np.interp(pos_times[bird], tmpRerr[bird][:, 0], tmpRerr[bird][:, dim])
+            outRerr[bird, :, dim] = np.interp(t_master, Rerr_arr[bird][:, 0], Rerr_arr[bird][:, dim])
 
     # Convert positional uncertainty from meters to kilometers
     return 1e-3 * outRerr
@@ -304,18 +374,23 @@ def calc_nominal(pos_times, pos_values, b_times, b_values):
 
 
 def calc_positional_uncertainty(pos_times, pos_values, b_times, b_values, outRerr,
-                                grad_0n, grad_0f, curve_0, curl_0, div_0):
+                                t_master, grad_0n, grad_0f, curve_0, curl_0, div_0):
     '''
     Compute squared uncertainty contributions from positional errors (DEFERR).
     Each probe's position is perturbed by +/- its uncertainty in each spatial
     dimension and the resulting change in each product is accumulated.
+
+    outRerr is assumed to be aligned with t_master (as returned by
+    load_positional_uncertainty).  pos_values are resampled to t_master
+    before perturbations are applied so that all arrays share a common grid.
 
     inputs:
     pos_times:  list of position time arrays (one per probe)
     pos_values: list of nominal position value arrays (one per probe)
     b_times:    list of magnetic field time arrays (one per probe)
     b_values:   list of magnetic field value arrays (one per probe)
-    outRerr:    positional uncertainty array (num_probes, n_times, 4) in km
+    outRerr:    positional uncertainty array (num_probes, len(t_master), 4) in km
+    t_master:   master time array from calc_nominal
     grad_0n:    nominal gradient of normalized B
     grad_0f:    nominal gradient of full B
     curve_0:    nominal curvature vector
@@ -334,16 +409,23 @@ def calc_positional_uncertainty(pos_times, pos_values, b_times, b_values, outRer
     r_uncertainty_curl   = np.zeros_like(curl_0)
     r_uncertainty_div    = np.zeros_like(div_0)
 
-    tpos = copy.deepcopy(pos_values)
+    # Resample each probe's position to t_master so it is consistent with outRerr
+    master_pos_times = [t_master] * num_probes
+    pos_on_master = [np.zeros((len(t_master), 3)) for _ in range(num_probes)]
+    for probe in range(num_probes):
+        for dim in range(3):
+            pos_on_master[probe][:, dim] = np.interp(t_master, pos_times[probe], pos_values[probe][:, dim])
+
+    tpos = copy.deepcopy(pos_on_master)
     for probe in range(num_probes):
         for spatial_dim in range(3):
             for sign in [-1, 1]:
                 tpos[probe][:, spatial_dim] = np.add(
-                    pos_values[probe][:, spatial_dim],
+                    pos_on_master[probe][:, spatial_dim],
                     np.multiply(outRerr[probe, :, spatial_dim + 1], sign))
 
-                grad_in, bm_i = mms_Grad(postimes=pos_times, posvalues=tpos, magtimes=b_times, magvalues=b_values, normalize=True)[:2]
-                grad_if = mms_Grad(postimes=pos_times, posvalues=tpos, magtimes=b_times, magvalues=b_values, normalize=False)[0]
+                grad_in, bm_i = mms_Grad(postimes=master_pos_times, posvalues=tpos, magtimes=b_times, magvalues=b_values, normalize=True)[:2]
+                grad_if = mms_Grad(postimes=master_pos_times, posvalues=tpos, magtimes=b_times, magvalues=b_values, normalize=False)[0]
                 curve_i = mms_Curvature(grad_in, bm_i)
                 curl_i  = mms_CurlB(grad_if)
                 div_i   = mms_DivB(grad_if)
@@ -354,7 +436,7 @@ def calc_positional_uncertainty(pos_times, pos_values, b_times, b_values, outRer
                 r_uncertainty_curl   = np.add(np.power(np.subtract(curl_i,  curl_0),  2), r_uncertainty_curl)
                 r_uncertainty_div    = np.add(np.power(np.subtract(div_i,   div_0),   2), r_uncertainty_div)
 
-                tpos = copy.deepcopy(pos_values)
+                tpos = copy.deepcopy(pos_on_master)
 
     return r_uncertainty_grad_n, r_uncertainty_curve, r_uncertainty_grad_f, r_uncertainty_curl, r_uncertainty_div
 
@@ -444,7 +526,7 @@ def combine_uncertainties(r_uncertainty_grad_n, r_uncertainty_curve, r_uncertain
 
 def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i, r_e,
                     curl_0, sum_uncertainty_curl, div_0, sum_uncertainty_div,
-                    uncertainty_rb_ratio_n, beta_i, beta_e, beta_total):
+                    uncertainty_rb_ratio_n, beta_i, beta_e, beta_total, v_perp_i):
     '''
     Build the output pandas DataFrame from all computed quantities.
 
@@ -464,6 +546,7 @@ def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i,
     beta_i:                 ion plasma beta array (n,)
     beta_e:                 electron plasma beta array (n,)
     beta_total:             total plasma beta array (n,)
+    v_perp_i:               magnitude of perpendicular ion bulk velocity in km/s (n,)
 
     outputs:
     curvedf:    pandas DataFrame with Time index and all computed columns
@@ -510,6 +593,7 @@ def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i,
         'beta_i':           beta_i,
         'beta_e':           beta_e,
         'beta_total':       beta_total,
+        '|v_perp_i|(km/s)': v_perp_i,
     }, index=t_master)
     curvedf.index.name = "Time"
     return curvedf
@@ -610,17 +694,17 @@ def main():
     fpidata, fpirate = load_fpi_data(trange, data_rate)
     print("Time FPI Loaded: ", time.strftime("%H:%M:%S", time.localtime()))
 
-    print("Collecting positional uncertainties...")
-    outRerr = load_positional_uncertainty(trange, num_probes, pos_times)
-
     calc_start_time = time.strftime("%H:%M:%S", time.localtime())
     print("Calculating Curvature:")
 
     grad_0n, grad_0f, bm_0, Bmag_0, rm_0, t_master, curve_0, curl_0, div_0 = calc_nominal(
         pos_times, pos_values, b_times, b_values)
 
+    print("Collecting positional uncertainties...")
+    outRerr = load_positional_uncertainty(trange, num_probes, t_master)
+
     r_unc = calc_positional_uncertainty(
-        pos_times, pos_values, b_times, b_values, outRerr,
+        pos_times, pos_values, b_times, b_values, outRerr, t_master,
         grad_0n, grad_0f, curve_0, curl_0, div_0)
 
     b_unc = calc_magnetometer_uncertainty(
@@ -643,10 +727,17 @@ def main():
     beta_i, beta_e, beta_total = calc_plasma_beta(fpidata=fpidata, fpirate=fpirate,
                                                    t_master=t_master, Bmag_0=Bmag_0)
 
+    print("Calculating perpendicular ion velocity...")
+    v_perp_i = calc_perp_ion_velocity(fpidata=fpidata, fpirate=fpirate,
+                                       t_master=t_master, bm_0=bm_0)
+    print(f"  |v_perp_i| -- min: {v_perp_i.min():.2f} km/s  "
+          f"mean: {v_perp_i.mean():.2f} km/s  "
+          f"max: {v_perp_i.max():.2f} km/s")
+
     curvedf = build_dataframe(
         t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i, r_e,
         curl_0, sum_uncertainty_curl, div_0, sum_uncertainty_div, uncertainty_rb_ratio_n,
-        beta_i, beta_e, beta_total)
+        beta_i, beta_e, beta_total, v_perp_i)
 
     save_results(curvedf, filename, save_csv=save_csv, save_h5=save_h5)
 
