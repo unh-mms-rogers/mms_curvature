@@ -54,12 +54,14 @@ def mesoGyroradius(fpidata, fpirate, t_master=None, bmag=None):
     if 'mms4_dis_tempperp_' + fpirate in fpidata:
         ion_tperp4  = np.interp(mitime, fpidata['mms4_dis_tempperp_' + fpirate]['x'],
                                          fpidata['mms4_dis_tempperp_' + fpirate]['y'])
-        elec_tperp4 = np.interp(metime, fpidata['mms4_des_tempperp_' + fpirate]['x'],
-                                          fpidata['mms4_des_tempperp_' + fpirate]['y'])
         tiperp = np.average([ion_tperp[0],  ion_tperp[1],  ion_tperp[2],  ion_tperp4],  axis=0)
-        teperp = np.average([elec_tperp[0], elec_tperp[1], elec_tperp[2], elec_tperp4], axis=0)
     else:
         tiperp = np.average([ion_tperp[0],  ion_tperp[1],  ion_tperp[2]],  axis=0)
+    if 'mms4_des_tempperp_' + fpirate in fpidata:
+        elec_tperp4 = np.interp(metime, fpidata['mms4_des_tempperp_' + fpirate]['x'],
+                                          fpidata['mms4_des_tempperp_' + fpirate]['y'])
+        teperp = np.average([elec_tperp[0], elec_tperp[1], elec_tperp[2], elec_tperp4], axis=0)
+    else:
         teperp = np.average([elec_tperp[0], elec_tperp[1], elec_tperp[2]], axis=0)
 
     # Interpolate averaged T_perp to t_master and calculate gyroradii.
@@ -132,6 +134,8 @@ def calc_plasma_beta(fpidata, fpirate, t_master, Bmag_0):
                                           fpidata['mms4_dis_numberdensity_' + fpirate]['y']))
         ion_tp.append(np.interp(mi_tp_t, fpidata['mms4_dis_tempperp_'      + fpirate]['x'],
                                           fpidata['mms4_dis_tempperp_'      + fpirate]['y']))
+
+    if 'mms4_des_numberdensity_' + fpirate in fpidata:
         elec_n.append( np.interp(me_n_t,  fpidata['mms4_des_numberdensity_' + fpirate]['x'],
                                            fpidata['mms4_des_numberdensity_' + fpirate]['y']))
         elec_tp.append(np.interp(me_tp_t, fpidata['mms4_des_tempperp_'      + fpirate]['x'],
@@ -176,7 +180,7 @@ def calc_perp_ion_velocity(fpidata, fpirate, t_master, bm_0):
     fpidata:    dict of pre-loaded FPI moments data as returned by load_fpi_data
     fpirate:    FPI data rate string ('fast' or 'brst'), as returned by load_fpi_data
     t_master:   master time series aligned with bm_0 (from calc_nominal)
-    bm_0:       mean normalized B unit vector array (n, 3) from calc_nominal
+    bm_0:       mean normalized B unit vector array (n, 3) in GSE coordinates
 
     outputs:
     v_perp_mag: magnitude of perpendicular ion bulk velocity in km/s,
@@ -188,8 +192,8 @@ def calc_perp_ion_velocity(fpidata, fpirate, t_master, bm_0):
     v_vals  = []
     for p in ['1', '2', '3']:
         pref = 'mms' + p + '_'
-        v_times.append(fpidata[pref + 'dis_bulkv_' + fpirate]['x'])
-        v_vals.append( fpidata[pref + 'dis_bulkv_' + fpirate]['y'])
+        v_times.append(fpidata[pref + 'dis_bulkv_gse_' + fpirate]['x'])
+        v_vals.append( fpidata[pref + 'dis_bulkv_gse_' + fpirate]['y'])
 
     mitime = v_times[0]
 
@@ -201,8 +205,8 @@ def calc_perp_ion_velocity(fpidata, fpirate, t_master, bm_0):
         v_vals[i] = v_interp
 
     # Include mms4 if it was successfully loaded
-    if 'mms4_dis_bulkv_' + fpirate in fpidata:
-        v4 = fpidata['mms4_dis_bulkv_' + fpirate]
+    if 'mms4_dis_bulkv_gse_' + fpirate in fpidata:
+        v4 = fpidata['mms4_dis_bulkv_gse_' + fpirate]
         v_interp4 = np.zeros_like(v_vals[0])
         for dim in range(3):
             v_interp4[:, dim] = np.interp(mitime, v4['x'], v4['y'][:, dim])
@@ -264,13 +268,17 @@ def load_fgm_data(trange, data_rate, num_probes=4):
     b_times    = [None] * num_probes
     pos_values = [None] * num_probes
     b_values   = [None] * num_probes
+    gse_values = [None] * num_probes
     for probe in range(num_probes):
         key = 'mms' + str(probe + 1) + '_fgm_'
-        pos_times[probe]  = np.copy(fgmdata[key + 'r_gsm_' + data_rate + '_l2']['x'])
-        b_times[probe]    = np.copy(fgmdata[key + 'b_gsm_' + data_rate + '_l2']['x'])
-        pos_values[probe] = np.copy(fgmdata[key + 'r_gsm_' + data_rate + '_l2']['y'])
-        b_values[probe]   = np.copy(fgmdata[key + 'b_gsm_' + data_rate + '_l2']['y'])
-    return pos_times, b_times, pos_values, b_values
+        pos_times[probe]    = np.copy(fgmdata[key + 'r_gsm_' + data_rate + '_l2']['x'])
+        b_times[probe]      = np.copy(fgmdata[key + 'b_gsm_' + data_rate + '_l2']['x'])
+        pos_values[probe]   = np.copy(fgmdata[key + 'r_gsm_' + data_rate + '_l2']['y'])
+        b_values[probe]     = np.copy(fgmdata[key + 'b_gsm_' + data_rate + '_l2']['y'])
+        gse_values[probe]   = np.copy(fgmdata[key + 'b_gse_' + data_rate + '_l2']['y'])
+
+
+    return pos_times, b_times, pos_values, b_values, gse_values
 
 
 def load_fpi_data(trange, data_rate, level='l2'):
@@ -669,7 +677,7 @@ def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
 def main():
     ####################################################
     # Default parameters
-    trange     = ['2020-08-01', '2020-08-05']
+    trange     = ['2020-08-01', '2020-08-02']
     data_rate  = 'srvy'
     prefix     = "~/Work/MMS_work/CurveGSM_"
     suffix     = "_v6.2"
@@ -686,7 +694,7 @@ def main():
 
     filename = generate_filename(trange, prefix, suffix)
 
-    pos_times, b_times, pos_values, b_values = load_fgm_data(trange, data_rate, num_probes)
+    pos_times, b_times, pos_values, b_values, gse_values = load_fgm_data(trange, data_rate, num_probes)
     fgm_load_done_time = time.strftime("%H:%M:%S", time.localtime())
     print("Time started: ", timeStart)
     print("Time FGM Loaded: ", fgm_load_done_time)
@@ -728,8 +736,38 @@ def main():
                                                    t_master=t_master, Bmag_0=Bmag_0)
 
     print("Calculating perpendicular ion velocity...")
+    # Calculating normalized magnetic field vector in GSE coordinates for comparison with FPI bulkv
+    bn = [None]*num_probes
+    # normalize magnetic fields
+    if gse_values[0].shape[-1] == 4:   # tests for |B| given as 4th vector in data
+        for bird in range(num_probes):
+            bn[bird] = gse_values[bird][:,0:3]/gse_values[bird][:,3,np.newaxis]
+    else:
+        for bird in range(num_probes):  # else calculates |B| from the 3-vector given
+            bn[bird] = gse_values[bird]/np.linalg.norm(gse_values[bird], axis=1).reshape(gse_values[bird].shape[0], 1)
+    ## find probe with latest beginning point for magnetic field data
+    #firsttimes = []
+    #lasttimes = []
+    #for bird in range(num_probes):
+    #    firsttimes.append(b_times[bird][0])
+    #    lasttimes.append(b_times[bird][-1])
+    #mastersc = np.argmax(firsttimes)
+    ## find earliest end time for all space craft in range
+    #tend = min(lasttimes)
+    #tend_i = b_times[mastersc].shape[0]-1  # initialize counting index for finding ending index for master S/C
+    ## initialize master time sequence by trimming time from last S/C to start (mastersc)
+    #while b_times[mastersc][tend_i] > tend: tend_i -= 1
+    #t_master = b_times[mastersc][0:(tend_i+1)]
+    # master mag field data arr, with interpolated values
+    # Magnetic field data, interpolated to the previously determined master time sequence
+    barr=np.ndarray((num_probes,t_master.shape[0],3))
+    for bird in range(num_probes):
+        barr[bird,:,0] = np.interp(t_master, b_times[bird], bn[bird][:,0])
+        barr[bird,:,1] = np.interp(t_master, b_times[bird], bn[bird][:,1])
+        barr[bird,:,2] = np.interp(t_master, b_times[bird], bn[bird][:,2])
+    b_gse = np.divide(np.add.reduce(barr),barr.shape[0]) # timeseries averaged magnetic field unit vector (barycentric B-vector) in GSE
     v_perp_i = calc_perp_ion_velocity(fpidata=fpidata, fpirate=fpirate,
-                                       t_master=t_master, bm_0=bm_0)
+                                       t_master=t_master, bm_0=b_gse)
     print(f"  |v_perp_i| -- min: {v_perp_i.min():.2f} km/s  "
           f"mean: {v_perp_i.mean():.2f} km/s  "
           f"max: {v_perp_i.max():.2f} km/s")
