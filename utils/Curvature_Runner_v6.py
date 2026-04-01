@@ -1,6 +1,7 @@
 # Copyright 2020-2022 Anthony Rogers.  All rights reserved.
 # Released under the Apache 2.0 license.
 
+import argparse
 import copy
 import time
 import numpy as np
@@ -675,6 +676,11 @@ def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='MMS Curvature Runner v6')
+    parser.add_argument('-y', '--no-prompt', action='store_true',
+                        help='Accept all defaults and run without interactive prompts')
+    args = parser.parse_args()
+
     ####################################################
     # Default parameters
     trange     = ['2020-08-01', '2020-08-02']
@@ -686,8 +692,9 @@ def main():
     num_probes = 4
     ####################################################
 
-    trange, data_rate, prefix, suffix, save_csv, save_h5 = _confirm_parameters(
-        trange, data_rate, prefix, suffix, save_csv, save_h5)
+    if not args.no_prompt:
+        trange, data_rate, prefix, suffix, save_csv, save_h5 = _confirm_parameters(
+            trange, data_rate, prefix, suffix, save_csv, save_h5)
 
     timeStart = time.strftime("%H:%M:%S", time.localtime())
     print("Files Loading:")
