@@ -683,7 +683,7 @@ def main():
 
     ####################################################
     # Default parameters
-    trange     = ['2020-08-01', '2020-08-02']
+    trange     = ['2017-05-01', '2017-06-01']
     data_rate  = 'srvy'
     prefix     = "~/Work/MMS_work/CurveGSM_"
     suffix     = "_v6.2"
