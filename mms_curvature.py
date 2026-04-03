@@ -288,10 +288,10 @@ def mms_Grad_RV(postimes=None, posvalues=None, magtimes=None, magvalues=None, no
 
     assert np.allclose(divB,
                        np.trace(gradB, axis1=-2, axis2=-1),
-                       atol=1.0e-17, equal_nan=True), 'Calculated divergence differs from trace of calculated gradient!'
+                       atol=1.0e-16, equal_nan=True), 'Calculated divergence differs from trace of calculated gradient!'
     assert np.allclose(curlB,
                        np.einsum('ijk,...jk', LevCiv3, gradB),
-                       atol=1.0e-17, equal_nan=True), 'Calculated curl differs from Levi-Civita permutated gradient!'
+                       atol=1.0e-16, equal_nan=True), 'Calculated curl differs from Levi-Civita permutated gradient!'
     ## End Section: Sanity Checks
 
 

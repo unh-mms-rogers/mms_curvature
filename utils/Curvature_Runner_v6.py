@@ -685,7 +685,7 @@ def main():
     # Default parameters
     trange     = ['2017-05-01', '2017-06-01']
     data_rate  = 'srvy'
-    prefix     = "~/Work/MMS_work/CurveGSM_"
+    prefix     = "~/Work/v6.2/CurveGSM_"
     suffix     = "_v6.2"
     save_csv   = True
     save_h5    = False
