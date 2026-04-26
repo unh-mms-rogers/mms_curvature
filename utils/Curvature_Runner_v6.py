@@ -227,7 +227,7 @@ def calc_perp_ion_velocity(fpidata, fpirate, t_master, bm_0):
     v_perp     = v_master - v_para                    # perpendicular component vector
     v_perp_mag = np.linalg.norm(v_perp, axis=1)       # magnitude in km/s
 
-    return v_perp_mag
+    return (v_perp_mag, v_perp)
 
 
 def generate_filename(trange, prefix, suffix):
@@ -602,7 +602,10 @@ def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i,
         'beta_i':           beta_i,
         'beta_e':           beta_e,
         'beta_total':       beta_total,
-        '|v_perp_i|(km/s)': v_perp_i,
+        '|v_perp_i|(km/s)': v_perp_i[0],
+        'v_perp_x':         v_perp_i[1].take(0, axis=1),
+        'v_perp_y':         v_perp_i[1].take(1, axis=1),
+        'v_perp_z':         v_perp_i[1].take(2, axis=1)
     }, index=t_master)
     curvedf.index.name = "Time"
     return curvedf
@@ -775,9 +778,9 @@ def main():
     b_gse = np.divide(np.add.reduce(barr),barr.shape[0]) # timeseries averaged magnetic field unit vector (barycentric B-vector) in GSE
     v_perp_i = calc_perp_ion_velocity(fpidata=fpidata, fpirate=fpirate,
                                        t_master=t_master, bm_0=b_gse)
-    print(f"  |v_perp_i| -- min: {v_perp_i.min():.2f} km/s  "
-          f"mean: {v_perp_i.mean():.2f} km/s  "
-          f"max: {v_perp_i.max():.2f} km/s")
+    #print(f"  |v_perp_i| -- min: {v_perp_i.min():.2f} km/s  "
+    #      f"mean: {v_perp_i.mean():.2f} km/s  "
+    #      f"max: {v_perp_i.max():.2f} km/s")
 
     curvedf = build_dataframe(
         t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i, r_e,
