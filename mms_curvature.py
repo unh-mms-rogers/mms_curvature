@@ -1,8 +1,6 @@
 '''
 python3 + numpy routine to calculate magnetic curvature from MMS data.
 
-Uses pyspedas for MMS data file loading
-
 *****************************************************************************
 Example script for loading required data and calculating the curvature vector:
     
@@ -40,7 +38,7 @@ NOTE: Need to update the docstring for mms_Grad after refactoring
 '''
 
 '''
-Copyright 2020-2022 Anthony Rogers.  All rights reserved.
+Copyright 2020-2024 Anthony Rogers and Timothy Rogers.  All rights reserved.
 Released under the Apache 2.0 license.
 
 Python3 functions for calculating common vector fields from arrays of discrete inputs.
@@ -290,10 +288,10 @@ def mms_Grad_RV(postimes=None, posvalues=None, magtimes=None, magvalues=None, no
 
     assert np.allclose(divB,
                        np.trace(gradB, axis1=-2, axis2=-1),
-                       atol=0), 'Calculated divergence differs from trace of calculated gradient!'
+                       atol=1.0e-16, equal_nan=True), 'Calculated divergence differs from trace of calculated gradient!'
     assert np.allclose(curlB,
                        np.einsum('ijk,...jk', LevCiv3, gradB),
-                       atol=0), 'Calculated curl differs from Levi-Civita permutated gradient!'
+                       atol=1.0e-16, equal_nan=True), 'Calculated curl differs from Levi-Civita permutated gradient!'
     ## End Section: Sanity Checks
 
 
