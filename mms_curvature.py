@@ -48,8 +48,10 @@ n-dimensional NumPy arrays or lists thereof.
 Specifications are provided in the docstrings for each function.
 '''
 import numpy as np
+import warnings
 
-def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=True, method='RV'):
+def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=True, method='RV',
+             return_flags=False, sanity_atol=1.0e-16):
     
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
@@ -89,15 +91,24 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
                 multi-observatory systems (verified by simulation with between 4 and 8
                 observatory systems), but has time and computation complexity which
                 scales [geometrically? exponentially?] with the number of observatories in the system.
+
+    return_flags:   (RV method only) if True, appends a sanity_flags array of shape (N,)
+                    to the return tuple.  Values: 0=all checks passed, 1=divB check failed,
+                    2=curlB check failed, 3=both checks failed.  Ignored for LSM.
+
+    sanity_atol:    (RV method only) absolute tolerance passed to np.isclose for the
+                    per-timestep sanity checks.  Default 1.0e-16.
     '''
     if(method.lower() == 'rv'):
-        return mms_Grad_RV(postimes=postimes, posvalues=posvalues, magtimes=magtimes, magvalues=magvalues, normalize=normalize)
+        return mms_Grad_RV(postimes=postimes, posvalues=posvalues, magtimes=magtimes, magvalues=magvalues,
+                           normalize=normalize, return_flags=return_flags, sanity_atol=sanity_atol)
     elif(method.lower() == 'lsm'):
         return mms_Grad_LSM(postimes=postimes, posvalues=posvalues, magtimes=magtimes, magvalues=magvalues, normalize=normalize)
     else:
         raise ValueError('Unknown gradient method specified: "'+str(method)+'". Please refer to function docstring for available methods.')
 
-def mms_Grad_RV(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=True, rvecs=False):
+def mms_Grad_RV(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=True, rvecs=False,
+                return_flags=False, sanity_atol=1.0e-16):
     
     '''
     Calculates spacial gradient and curvature vector of the magnetic field.  
@@ -128,6 +139,18 @@ def mms_Grad_RV(postimes=None, posvalues=None, magtimes=None, magvalues=None, no
 
     rvecs:      If True, appends the reciprocal vectors array to the output tuple
                 Please note: This array will have shape (4, timesteps, 3)
+
+    return_flags:   If True, appends a sanity_flags integer array of shape (N,) to the
+                    return tuple.  Each element encodes the result of the per-timestep
+                    consistency checks:
+                        0 = all checks passed
+                        1 = divB check failed (div(b) != trace(grad(b)))
+                        2 = curlB check failed (curl(b) != Levi-Civita * grad(b))
+                        3 = both checks failed
+                    A warnings.warn() is also issued for any failing timesteps.
+
+    sanity_atol:    Absolute tolerance for the per-timestep sanity checks (passed to
+                    np.isclose).  Default 1.0e-16.
 
     Notes:
         The input B-field data and position data are required to be in 
@@ -286,20 +309,34 @@ def mms_Grad_RV(postimes=None, posvalues=None, magtimes=None, magvalues=None, no
                                     )
     divB = np.add.reduce(divB_diag).reshape((barr.shape[1],))
 
-    assert np.allclose(divB,
-                       np.trace(gradB, axis1=-2, axis2=-1),
-                       atol=1.0e-16, equal_nan=True), 'Calculated divergence differs from trace of calculated gradient!'
-    assert np.allclose(curlB,
-                       np.einsum('ijk,...jk', LevCiv3, gradB),
-                       atol=1.0e-16, equal_nan=True), 'Calculated curl differs from Levi-Civita permutated gradient!'
+    # Per-timestep sanity checks.  Flag values: 0=pass, 1=divB fail, 2=curlB fail, 3=both fail.
+    sanity_flags = np.zeros(t_master.shape[0], dtype=np.int8)
+
+    divB_fail = ~np.isclose(divB, np.trace(gradB, axis1=-2, axis2=-1),
+                            atol=sanity_atol, equal_nan=True)
+    curlB_fail = ~np.all(np.isclose(curlB, np.einsum('ijk,...jk', LevCiv3, gradB),
+                                    atol=sanity_atol, equal_nan=True), axis=1)
+
+    sanity_flags[divB_fail]  += 1
+    sanity_flags[curlB_fail] += 2
+
+    if np.any(divB_fail):
+        warnings.warn(f'divB sanity check failed at {divB_fail.sum()} of {t_master.shape[0]} timestep(s): '
+                      'calculated divergence differs from trace of calculated gradient.')
+    if np.any(curlB_fail):
+        warnings.warn(f'curlB sanity check failed at {curlB_fail.sum()} of {t_master.shape[0]} timestep(s): '
+                      'calculated curl differs from Levi-Civita permutated gradient.')
     ## End Section: Sanity Checks
 
 
-    if(rvecs):
+    if rvecs and return_flags:
+        return gradB, bm, bmag, rm, t_master, k, sanity_flags
+    elif rvecs:
         return gradB, bm, bmag, rm, t_master, k
+    elif return_flags:
+        return gradB, bm, bmag, rm, t_master, sanity_flags
     else:
         return gradB, bm, bmag, rm, t_master
-    pass
 
 def mms_Grad_LSM(postimes=None, posvalues=None, magtimes=None, magvalues=None, normalize=True):
     
