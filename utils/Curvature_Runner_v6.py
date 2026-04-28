@@ -361,25 +361,32 @@ def calc_nominal(pos_times, pos_values, b_times, b_values):
     b_values:   list of magnetic field value arrays (one per probe)
 
     outputs:
-    (grad_0n, grad_0f, bm_0, Bmag_0, rm_0, t_master, curve_0, curl_0, div_0)
-        grad_0n:    gradient of normalized B
-        grad_0f:    gradient of full (unnormalized) B
-        bm_0:       mean normalized B vector
-        Bmag_0:     mean |B|
-        rm_0:       mesocenter position
-        t_master:   master time series
-        curve_0:    curvature vector
-        curl_0:     curl of B
-        div_0:      divergence of B
+    (grad_0n, grad_0f, bm_0, Bmag_0, rm_0, t_master, curve_0, curl_0, div_0, sanity_flags)
+        grad_0n:      gradient of normalized B
+        grad_0f:      gradient of full (unnormalized) B
+        bm_0:         mean normalized B vector
+        Bmag_0:       mean |B|
+        rm_0:         mesocenter position
+        t_master:     master time series
+        curve_0:      curvature vector
+        curl_0:       curl of B
+        div_0:        divergence of B
+        sanity_flags: int8 array (N,); bitwise OR of flags from both mms_Grad calls.
+                      0=all checks passed, 1=divB failed, 2=curlB failed, 3=both failed.
     '''
-    grad_0n, bm_0, Bmag_0, rm_0, t_master = mms_Grad(
-        postimes=pos_times, posvalues=pos_values, magtimes=b_times, magvalues=b_values, normalize=True)
-    grad_0f, Bm_0 = mms_Grad(
-        postimes=pos_times, posvalues=pos_values, magtimes=b_times, magvalues=b_values, normalize=False)[:2]
+    grad_0n, bm_0, Bmag_0, rm_0, t_master, flags_n = mms_Grad(
+        postimes=pos_times, posvalues=pos_values, magtimes=b_times, magvalues=b_values,
+        normalize=True, return_flags=True)
+    _out_f = mms_Grad(
+        postimes=pos_times, posvalues=pos_values, magtimes=b_times, magvalues=b_values,
+        normalize=False, return_flags=True)
+    grad_0f  = _out_f[0]
+    flags_f  = _out_f[-1]
+    sanity_flags = flags_n | flags_f
     curve_0 = mms_Curvature(grad_0n, bm_0)
     curl_0  = mms_CurlB(grad_0f)
     div_0   = mms_DivB(grad_0f)
-    return grad_0n, grad_0f, bm_0, Bmag_0, rm_0, t_master, curve_0, curl_0, div_0
+    return grad_0n, grad_0f, bm_0, Bmag_0, rm_0, t_master, curve_0, curl_0, div_0, sanity_flags
 
 
 def calc_positional_uncertainty(pos_times, pos_values, b_times, b_values, outRerr,
@@ -535,7 +542,8 @@ def combine_uncertainties(r_uncertainty_grad_n, r_uncertainty_curve, r_uncertain
 
 def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i, r_e,
                     curl_0, sum_uncertainty_curl, div_0, sum_uncertainty_div,
-                    uncertainty_rb_ratio_n, beta_i, beta_e, beta_total, v_perp_i):
+                    uncertainty_rb_ratio_n, beta_i, beta_e, beta_total, v_perp_i,
+                    sanity_flags):
     '''
     Build the output pandas DataFrame from all computed quantities.
 
@@ -556,6 +564,8 @@ def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i,
     beta_e:                 electron plasma beta array (n,)
     beta_total:             total plasma beta array (n,)
     v_perp_i:               magnitude of perpendicular ion bulk velocity in km/s (n,)
+    sanity_flags:           int8 array (n,) from mms_Grad; 0=pass, 1=divB fail,
+                            2=curlB fail, 3=both fail
 
     outputs:
     curvedf:    pandas DataFrame with Time index and all computed columns
@@ -605,7 +615,8 @@ def build_dataframe(t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i,
         '|v_perp_i|(km/s)': v_perp_i[0],
         'v_perp_x':         v_perp_i[1].take(0, axis=1),
         'v_perp_y':         v_perp_i[1].take(1, axis=1),
-        'v_perp_z':         v_perp_i[1].take(2, axis=1)
+        'v_perp_z':         v_perp_i[1].take(2, axis=1),
+        'sanity_flags':     sanity_flags
     }, index=t_master)
     curvedf.index.name = "Time"
     return curvedf
@@ -715,7 +726,7 @@ def main():
     calc_start_time = time.strftime("%H:%M:%S", time.localtime())
     print("Calculating Curvature:")
 
-    grad_0n, grad_0f, bm_0, Bmag_0, rm_0, t_master, curve_0, curl_0, div_0 = calc_nominal(
+    grad_0n, grad_0f, bm_0, Bmag_0, rm_0, t_master, curve_0, curl_0, div_0, sanity_flags = calc_nominal(
         pos_times, pos_values, b_times, b_values)
 
     print("Collecting positional uncertainties...")
@@ -785,7 +796,7 @@ def main():
     curvedf = build_dataframe(
         t_master, curve_0, sum_uncertainty_curve, bm_0, Bmag_0, r_i, r_e,
         curl_0, sum_uncertainty_curl, div_0, sum_uncertainty_div, uncertainty_rb_ratio_n,
-        beta_i, beta_e, beta_total, v_perp_i)
+        beta_i, beta_e, beta_total, v_perp_i, sanity_flags)
 
     save_results(curvedf, filename, save_csv=save_csv, save_h5=save_h5)
 
