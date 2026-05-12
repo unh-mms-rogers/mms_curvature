@@ -251,7 +251,7 @@ def generate_filename(trange, prefix, suffix):
     return prefix + trange[0][:10] + "--" + trange[1][:10] + suffix + ".csv"
 
 
-def load_fgm_data(trange, data_rate, num_probes=4):
+def load_fgm_data(trange, data_rate, num_probes=4, no_update=False):
     '''
     Load FGM position and magnetic field data for all probes.
 
@@ -259,12 +259,13 @@ def load_fgm_data(trange, data_rate, num_probes=4):
     trange:     2-element list of start/end time strings
     data_rate:  'srvy' or 'brst'
     num_probes: number of MMS probes to load (default 4)
+    no_update:  if True, use only locally cached files (default False)
 
     outputs:
     (pos_times, b_times, pos_values, b_values) -- each a list of length
     num_probes containing the time and value arrays for each probe
     '''
-    fgmdata = mms_load_fgm(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, time_clip=True)[0]
+    fgmdata = mms_load_fgm(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, time_clip=True, no_update=no_update)[0]
     pos_times  = [None] * num_probes
     b_times    = [None] * num_probes
     pos_values = [None] * num_probes
@@ -282,7 +283,7 @@ def load_fgm_data(trange, data_rate, num_probes=4):
     return pos_times, b_times, pos_values, b_values, gse_values
 
 
-def load_fpi_data(trange, data_rate, level='l2'):
+def load_fpi_data(trange, data_rate, level='l2', no_update=False):
     '''
     Load FPI moments (dis-moms, des-moms) for all probes.  Probes 1-3 are
     always loaded; probe 4 is attempted and silently dropped on failure.
@@ -291,6 +292,7 @@ def load_fpi_data(trange, data_rate, level='l2'):
     trange:     2-element list of start/end time strings
     data_rate:  'srvy' or 'brst'
     level:      data level (default 'l2')
+    no_update:  if True, use only locally cached files (default False)
 
     outputs:
     (fpidata, fpirate) where:
@@ -301,18 +303,18 @@ def load_fpi_data(trange, data_rate, level='l2'):
     fpidata = {}
     for probe in ['1', '2', '3']:
         data, _ = mms_load_fpi(trange=trange, probe=probe, data_rate=fpirate, level=level,
-                               datatype=['dis-moms', 'des-moms'], time_clip=True)
+                               datatype=['dis-moms', 'des-moms'], time_clip=True, no_update=no_update)
         fpidata.update(data)
     try:
         data4, _ = mms_load_fpi(trange=trange, probe='4', data_rate=fpirate, level=level,
-                                datatype=['dis-moms', 'des-moms'], time_clip=True)
+                                datatype=['dis-moms', 'des-moms'], time_clip=True, no_update=no_update)
         fpidata.update(data4)
     except:
         print('Error loading mms4 FPI data.  Will drop mms4 from this dataset.')
     return fpidata, fpirate
 
 
-def load_positional_uncertainty(trange, num_probes, t_master):
+def load_positional_uncertainty(trange, num_probes, t_master, no_update=False):
     '''
     Load DEFERR ancillary positional uncertainty data and interpolate onto
     t_master -- the authoritative time grid produced by calc_nominal --
@@ -326,12 +328,13 @@ def load_positional_uncertainty(trange, num_probes, t_master):
     trange:     2-element list of start/end time strings
     num_probes: number of MMS probes
     t_master:   master time array as returned by calc_nominal
+    no_update:  if True, use only locally cached files (default False)
 
     outputs:
     outRerr:    array of shape (num_probes, len(t_master), 4) with positional
                 uncertainty in kilometers, aligned with t_master
     '''
-    deferr_in = mms_load_ancillary(probe=['1', '2', '3', '4'], anc_product='deferr', trange=trange, time_clip=True)
+    deferr_in = mms_load_ancillary(probe=['1', '2', '3', '4'], anc_product='deferr', trange=trange, time_clip=True, no_update=no_update)
     Rerr_arr = [None] * num_probes
     for probe in range(1, num_probes + 1):
         Rerr_arr[probe - 1] = deferr_in[0]["MMS" + str(probe) + "_DEFERR"].to_numpy()
@@ -654,7 +657,7 @@ def _prompt_bool(label, current):
     return response == 'y'
 
 
-def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
+def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5, no_update):
     '''
     Display current run parameters and allow the user to confirm or modify
     each one interactively.  Returns the (possibly updated) parameter set.
@@ -667,6 +670,7 @@ def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
     print(f"  suffix       : {suffix}")
     print(f"  save_csv     : {save_csv}")
     print(f"  save_h5      : {save_h5}")
+    print(f"  no_update    : {no_update}")
     print("\nPress Enter to keep each value, or type a new one.")
 
     trange    = [_prompt("trange start", trange[0]),
@@ -674,8 +678,9 @@ def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
     data_rate = _prompt("data_rate (srvy/brst)", data_rate)
     prefix    = _prompt("prefix",   prefix)
     suffix    = _prompt("suffix",   suffix)
-    save_csv  = _prompt_bool("save_csv", save_csv)
-    save_h5   = _prompt_bool("save_h5",  save_h5)
+    save_csv  = _prompt_bool("save_csv",  save_csv)
+    save_h5   = _prompt_bool("save_h5",   save_h5)
+    no_update = _prompt_bool("no_update", no_update)
 
     print("\n--- Confirmed Parameters ---")
     print(f"  trange    : {trange}")
@@ -684,43 +689,47 @@ def _confirm_parameters(trange, data_rate, prefix, suffix, save_csv, save_h5):
     print(f"  suffix    : {suffix}")
     print(f"  save_csv  : {save_csv}")
     print(f"  save_h5   : {save_h5}")
+    print(f"  no_update : {no_update}")
     print()
 
-    return trange, data_rate, prefix, suffix, save_csv, save_h5
+    return trange, data_rate, prefix, suffix, save_csv, save_h5, no_update
 
 
 def main():
     parser = argparse.ArgumentParser(description='MMS Curvature Runner v6')
     parser.add_argument('-y', '--no-prompt', action='store_true',
                         help='Accept all defaults and run without interactive prompts')
+    parser.add_argument('--no-update', action='store_true',
+                        help='Use only locally cached data files; do not download updates')
     args = parser.parse_args()
 
     ####################################################
     # Default parameters
-    trange     = ['2017-05-01', '2017-06-01']
+    trange     = ['2018-07-10', '2018-07-11']
     data_rate  = 'srvy'
     prefix     = "~/Work/v6.2/CurveGSM_"
     suffix     = "_v6.2"
     save_csv   = True
     save_h5    = False
+    no_update  = args.no_update
     num_probes = 4
     ####################################################
 
     if not args.no_prompt:
-        trange, data_rate, prefix, suffix, save_csv, save_h5 = _confirm_parameters(
-            trange, data_rate, prefix, suffix, save_csv, save_h5)
+        trange, data_rate, prefix, suffix, save_csv, save_h5, no_update = _confirm_parameters(
+            trange, data_rate, prefix, suffix, save_csv, save_h5, no_update)
 
     timeStart = time.strftime("%H:%M:%S", time.localtime())
     print("Files Loading:")
 
     filename = generate_filename(trange, prefix, suffix)
 
-    pos_times, b_times, pos_values, b_values, gse_values = load_fgm_data(trange, data_rate, num_probes)
+    pos_times, b_times, pos_values, b_values, gse_values = load_fgm_data(trange, data_rate, num_probes, no_update=no_update)
     fgm_load_done_time = time.strftime("%H:%M:%S", time.localtime())
     print("Time started: ", timeStart)
     print("Time FGM Loaded: ", fgm_load_done_time)
 
-    fpidata, fpirate = load_fpi_data(trange, data_rate)
+    fpidata, fpirate = load_fpi_data(trange, data_rate, no_update=no_update)
     print("Time FPI Loaded: ", time.strftime("%H:%M:%S", time.localtime()))
 
     calc_start_time = time.strftime("%H:%M:%S", time.localtime())
@@ -730,7 +739,7 @@ def main():
         pos_times, pos_values, b_times, b_values)
 
     print("Collecting positional uncertainties...")
-    outRerr = load_positional_uncertainty(trange, num_probes, t_master)
+    outRerr = load_positional_uncertainty(trange, num_probes, t_master, no_update=no_update)
 
     r_unc = calc_positional_uncertainty(
         pos_times, pos_values, b_times, b_values, outRerr, t_master,
